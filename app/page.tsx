@@ -1,10 +1,48 @@
+'use client'
+
+import { useChat } from '@ai-sdk/react'
+import type { FormEvent } from 'react'
+import { useMemo, useState } from 'react'
+
+function getTextFromParts(parts: Array<any>): string {
+  return parts
+    .filter((p) => p?.type === 'text' && typeof p.text === 'string')
+    .map((p) => p.text)
+    .join('')
+}
+
 export default function Chat() {
+  const { messages, sendMessage, status } = useChat()
+  const [input, setInput] = useState('')
+
+  const isLoading = status === 'submitted' || status === 'streaming'
+  const hasMessages = messages.length > 0
+
+  const renderedMessages = useMemo(() => {
+    return messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      text: getTextFromParts(m.parts ?? []),
+    }))
+  }, [messages])
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    const text = input.trim()
+    if (!text || isLoading) return
+
+    setInput('')
+    await sendMessage({ text })
+  }
+
   return (
     <main className="min-h-screen bg-[#F9FAFB] text-[#1F2937]">
       <div className="mx-auto flex h-screen max-w-3xl flex-col px-4 py-6">
         <header className="flex items-start justify-between gap-4 pb-4">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight">ACE Chatbot</h1>
+            <h1 className="text-xl font-semibold tracking-tight">
+              ACE Chatbot
+            </h1>
             <p className="mt-1 text-sm text-[#1F2937]/70">
               A simple chat UI layout (Pass 1).
             </p>
@@ -36,74 +74,98 @@ export default function Chat() {
           className="flex-1 overflow-hidden rounded-xl border border-[#1F2937]/10 bg-white shadow-sm"
         >
           <div className="h-full overflow-y-auto px-4 py-5">
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[#3B82F6] px-4 py-3 text-sm text-white shadow-sm">
-                  Hey! Can you help me build a multi-provider chatbot UI?
+            {!hasMessages ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="max-w-sm rounded-lg border border-[#1F2937]/10 bg-[#F9FAFB] px-4 py-3 text-center text-sm text-[#1F2937]/70">
+                  No messages yet. Send your first prompt below.
                 </div>
               </div>
+            ) : (
+              <div className="space-y-4">
+                {renderedMessages.map((m) => {
+                  const isUser = m.role === 'user'
+                  return (
+                    <div
+                      key={m.id}
+                      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={[
+                          'max-w-[85%] whitespace-pre-wrap px-4 py-3 text-sm shadow-sm',
+                          isUser
+                            ? 'rounded-2xl rounded-br-md bg-[#3B82F6] text-white'
+                            : 'rounded-2xl rounded-bl-md bg-[#1F2937]/5 text-[#1F2937]',
+                        ].join(' ')}
+                      >
+                        {m.text || (
+                          <span className="text-[#1F2937]/60">
+                            (non-text content)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
 
-              <div className="flex justify-start">
-                <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-[#1F2937]/5 px-4 py-3 text-sm text-[#1F2937] shadow-sm">
-                  Absolutely. Start with a clean layout: a message list, an
-                  input bar, and a model selector. We’ll wire data in the next
-                  pass.
-                </div>
+                {isLoading ? (
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-[#1F2937]/5 px-4 py-3 text-sm text-[#1F2937]/70 shadow-sm">
+                      Thinking…
+                    </div>
+                  </div>
+                ) : null}
               </div>
-
-              <div className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[#3B82F6] px-4 py-3 text-sm text-white shadow-sm">
-                  Great—let’s keep it simple and readable.
-                </div>
-              </div>
-
-              <div className="flex justify-start">
-                <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-[#1F2937]/5 px-4 py-3 text-sm text-[#1F2937] shadow-sm">
-                  Done. This page is currently static placeholders only.
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </section>
 
-        <section
-          aria-label="Composer"
-          className="mt-4 rounded-xl border border-[#1F2937]/10 bg-white p-3 shadow-sm"
-        >
-          <div className="flex items-end gap-3">
-            <div className="min-w-0 flex-1">
-              <label
-                htmlFor="prompt"
-                className="block text-xs font-medium text-[#1F2937]/70"
+        <form onSubmit={onSubmit}>
+          <section
+            aria-label="Composer"
+            className="mt-4 rounded-xl border border-[#1F2937]/10 bg-white p-3 shadow-sm"
+          >
+            <div className="flex items-end gap-3">
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor="prompt"
+                  className="block text-xs font-medium text-[#1F2937]/70"
+                >
+                  Message
+                </label>
+                <input
+                  id="prompt"
+                  name="prompt"
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type a message…"
+                  className="mt-1 w-full rounded-md border border-[#1F2937]/15 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-offset-2 focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/25"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-[#10B981] px-4 text-sm font-semibold text-white shadow-sm outline-none ring-offset-2 hover:bg-[#10B981]/90 focus:ring-2 focus:ring-[#10B981]/35 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Message
-              </label>
-              <input
-                id="prompt"
-                name="prompt"
-                type="text"
-                placeholder="Type a message…"
-                className="mt-1 w-full rounded-md border border-[#1F2937]/15 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-offset-2 focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/25"
-              />
+                Send
+              </button>
             </div>
 
-            <button
-              type="button"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-[#10B981] px-4 text-sm font-semibold text-white shadow-sm outline-none ring-offset-2 hover:bg-[#10B981]/90 focus:ring-2 focus:ring-[#10B981]/35"
-            >
-              Send
-            </button>
-          </div>
-
-          <div className="mt-2 flex items-center justify-between gap-3 text-xs text-[#1F2937]/60">
-            <span>Tip: Shift+Enter for new lines (future)</span>
-            <span className="inline-flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#3B82F6]" />
-              Layout only
-            </span>
-          </div>
-        </section>
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-[#1F2937]/60">
+              <span>
+                {isLoading ? 'Generating response…' : 'Press Enter to send'}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${isLoading ? 'bg-[#10B981]' : 'bg-[#3B82F6]'}`}
+                />
+                {isLoading ? 'Working' : 'Ready'}
+              </span>
+            </div>
+          </section>
+        </form>
       </div>
     </main>
-  );
+  )
 }

@@ -1,7 +1,14 @@
-// TODO: Build your chat API route here
-// See the tutorial for step-by-step instructions
-// See ../../../sample-solution/app/api/chat/route.ts for a working reference
+import { streamText, convertToModelMessages } from 'ai'
+import { google } from '@ai-sdk/google'
 
 export async function POST(req: Request) {
-  return new Response("Not implemented yet", { status: 501 });
+  const body = await req.json()
+  const messages = body?.messages ?? []
+
+  const result = streamText({
+    model: google('gemini-2.5-flash'),
+    messages: await convertToModelMessages(messages),
+  })
+
+  return result.toUIMessageStreamResponse()
 }
