@@ -1,0 +1,7 @@
+{"timestamp":"00:00:01.392","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:01.392","source":"Server","level":"LOG","message":"  We detected TypeScript in your project and reconfigured your tsconfig.json file for you. Strict-mode is set to false by default."}
+{"timestamp":"00:00:01.392","source":"Server","level":"LOG","message":"  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n"}
+{"timestamp":"00:00:01.392","source":"Server","level":"LOG","message":"  \t- include was updated to add '.next/types/**/*.ts'"}
+{"timestamp":"00:00:01.392","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:01.462","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:15.826","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
