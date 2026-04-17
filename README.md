@@ -1,56 +1,58 @@
-# ACE Chatbot — JS Challenge
+# ace-chatbot
 
-Build a multi-provider chatbot with Next.js and Vercel AI SDK v6. This folder is your starting point — dependencies and config are set up, you just need to write the code.
+A multi-provider AI chatbot built with Next.js and the Vercel AI SDK.  
+It supports Gemini, GPT, and Claude models with a simple model selector and focuses on improving output quality through lightweight evaluation checks and an agentic coding workflow.
 
-## Quick start
+---
+
+## Features
+
+- Streaming chat UI using `useChat` and server-side `streamText`
+- Model selector to switch between providers
+- Multi-provider support (Gemini, OpenAI, Anthropic)
+- Conversation history
+- Error-aware UX (preserves input and shows feedback on failure)
+- Evaluation script for:
+  - On-topic responses
+  - JSON validity (schema-aware)
+  - Conciseness
+
+---
+
+## Agentic Workflow
+
+This project was built using a structured agentic workflow:
+
+- Pass-based development (UI → Data → Logic → Polish)
+- External AI code review
+- Review-retro loop to filter and apply improvements
+- Memory-driven updates (`memory.md`) to capture reusable patterns
+
+---
+
+## Notes
+
+- Gemini was used for live testing
+- OpenAI and Anthropic are fully wired and ready with API keys
+
+---
+
+## Setup
 
 ```bash
 npm install
-cp .env.example .env.local   # then add your API keys
 npm run dev
 ```
 
-Opens at http://localhost:3000 with a placeholder page.
+Create a .env.local file:
 
-## What to build
+GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
+ANTHROPIC_API_KEY=your_key_here
 
-Follow the tutorial lesson to build each piece:
+Then open:
+http://localhost:3000
 
-### Step 1: Chat API route
-- Edit `app/api/chat/route.ts`
-- Import `streamText` and `convertToModelMessages` from `ai`
-- Import `google` from `@ai-sdk/google`
-- Call Gemini, return `result.toUIMessageStreamResponse()`
+## Developer Notes
 
-### Step 2: Chat UI
-- Edit `app/page.tsx`
-- Import `useChat` from `@ai-sdk/react` and `useState` from React
-- Manage your own input state (v6 doesn't provide `input`/`handleInputChange`)
-- Call `sendMessage({ text: input })` to send messages
-- Render messages using `message.parts` (not `message.content`)
-
-### Step 3: Multi-provider
-- Add a model selector dropdown with `useState`
-- Pass the selected model to the API route — the `body` goes in the **second argument**:
-  ```typescript
-  sendMessage({ text: input }, { body: { model } });
-  ```
-- In the route, read the model from the request body and switch providers
-- Add Claude and GPT providers to the route (`npm install @ai-sdk/anthropic @ai-sdk/openai`)
-
-### Step 4: Evals
-- Create `evals.mjs` with 3 evaluation functions (on-topic, valid JSON, concise)
-- Use `import dotenv from 'dotenv'; dotenv.config({ path: '.env.local' });` to load your keys
-- Use `generateText` from `ai` with your provider imports to get responses
-- Run against at least 2 providers and compare results
-- Run with `node evals.mjs`
-
-## Stuck?
-
-Look at `../sample-solution/` for a complete working version.
-
-## API keys
-
-You need at least `GOOGLE_GENERATIVE_AI_API_KEY` in your `.env.local` for the default Gemini provider.
-
-Note: the Vercel AI SDK uses `GOOGLE_GENERATIVE_AI_API_KEY`, not `GOOGLE_API_KEY`.
+See `README.dev.md` for detailed development notes and course-related context.
