@@ -2,7 +2,7 @@
 
 import { useChat } from '@ai-sdk/react'
 import type { FormEvent } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 function getTextFromParts(parts: Array<any>): string {
   return parts
@@ -12,12 +12,36 @@ function getTextFromParts(parts: Array<any>): string {
 }
 
 export default function Chat() {
-  const { messages, sendMessage, status } = useChat()
+  const pendingMessageRef = useRef<string | null>(null)
+  const currentInputRef = useRef('')
+
+  const { messages, sendMessage, status, error, clearError } = useChat({
+    onFinish: ({ isError }) => {
+      if (isError) {
+        pendingMessageRef.current = null
+        return
+      }
+
+      const pending = pendingMessageRef.current
+      if (!pending) return
+
+      if (currentInputRef.current.trim() === pending) {
+        setInput('')
+      }
+
+      pendingMessageRef.current = null
+    },
+  })
   const [input, setInput] = useState('')
   const [model, setModel] = useState('gemini-2.5-flash')
 
+  useEffect(() => {
+    currentInputRef.current = input
+  }, [input])
+
   const isLoading = status === 'submitted' || status === 'streaming'
   const hasMessages = messages.length > 0
+  const composerError = error?.message ?? null
 
   const renderedMessages = useMemo(() => {
     return messages.map((m) => ({
@@ -32,7 +56,8 @@ export default function Chat() {
     const text = input.trim()
     if (!text || isLoading) return
 
-    setInput('')
+    clearError()
+    pendingMessageRef.current = text
     await sendMessage({ text }, { body: { model } })
   }
 
@@ -126,6 +151,17 @@ export default function Chat() {
             aria-label="Composer"
             className="mt-4 rounded-xl border border-[#1F2937]/10 bg-white p-3 shadow-sm"
           >
+            {composerError ? (
+              <div className="mb-3 rounded-md border border-[#3B82F6]/25 bg-[#3B82F6]/10 px-3 py-2 text-sm text-[#1F2937]">
+                <div className="font-semibold">Couldn’t send message</div>
+                <div className="mt-0.5 text-[#1F2937]/80">{composerError}</div>
+                <div className="mt-1 text-xs text-[#1F2937]/70">
+                  Check your API keys in <code>.env.local</code> (or your
+                  network) and try again.
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex items-end gap-3">
               <div className="min-w-0 flex-1">
                 <label
@@ -139,7 +175,10 @@ export default function Chat() {
                   name="prompt"
                   type="text"
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    if (status === 'error') clearError()
+                    setInput(e.target.value)
+                  }}
                   placeholder="Type a message…"
                   className="mt-1 w-full rounded-md border border-[#1F2937]/15 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-offset-2 focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/25"
                 />

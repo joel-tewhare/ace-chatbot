@@ -36,3 +36,15 @@ Each layer has a clear responsibility.
 Show lightweight system status near the interaction point (e.g. “Ready” / “Working”).
 
 Improves clarity without interrupting flow.
+
+## Async Error Handling (SDK Hooks)
+
+- Not all async helpers throw on failure.
+- Some return errors via state instead of rejecting promises.
+- Always verify whether `try/catch` is actually triggered before relying on it for UI error handling.
+
+## Async UI + User Input
+
+When handling async actions (e.g. sending messages), account for user interaction during the request.
+
+Avoid overwriting user input if the user continues typing while a request is in-flight.

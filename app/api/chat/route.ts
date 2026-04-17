@@ -20,10 +20,34 @@ function jsonResponse(body: unknown, init?: ResponseInit) {
   })
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isValidChatMessage(value: unknown): boolean {
+  if (!isRecord(value)) return false
+  const role = value.role
+  return role === 'user' || role === 'assistant' || role === 'system'
+}
+
 export async function POST(req: Request) {
-  const body = await req.json()
-  const messages = body?.messages ?? []
-  const requestedModel = body?.model
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return jsonResponse({ error: 'Malformed JSON body' }, { status: 400 })
+  }
+
+  if (!isRecord(body)) {
+    return jsonResponse({ error: 'Invalid request body' }, { status: 400 })
+  }
+
+  const messages = body.messages
+  const requestedModel = body.model
+
+  if (!Array.isArray(messages) || !messages.every(isValidChatMessage)) {
+    return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 })
+  }
 
   const model =
     typeof requestedModel === 'string' && requestedModel.trim().length > 0
@@ -34,7 +58,12 @@ export async function POST(req: Request) {
     return jsonResponse({ error: 'Unsupported model', model }, { status: 400 })
   }
 
-  const modelMessages = await convertToModelMessages(messages)
+  let modelMessages
+  try {
+    modelMessages = await convertToModelMessages(messages)
+  } catch {
+    return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 })
+  }
 
   let providerModel
   if (model.startsWith('gemini-')) {
