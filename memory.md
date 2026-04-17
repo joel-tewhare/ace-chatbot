@@ -20,3 +20,19 @@ AI SDK messages are structured as parts (not plain text).
 UI should derive display-friendly text (e.g. via helper) rather than using raw message shape directly.
 
 Pattern: raw data → transform → UI-ready data
+
+## SDK Layered Abstraction (AI Chat)
+
+Chat flow is split across layers:
+
+- UI (useChat) handles state + sending
+- API route handles validation + provider selection
+- SDK handles model execution
+
+Each layer has a clear responsibility.
+
+## UI Feedback Pattern — System Status
+
+Show lightweight system status near the interaction point (e.g. “Ready” / “Working”).
+
+Improves clarity without interrupting flow.
