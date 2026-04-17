@@ -14,6 +14,7 @@ function getTextFromParts(parts: Array<any>): string {
 export default function Chat() {
   const { messages, sendMessage, status } = useChat()
   const [input, setInput] = useState('')
+  const [model, setModel] = useState('gemini-2.5-flash')
 
   const isLoading = status === 'submitted' || status === 'streaming'
   const hasMessages = messages.length > 0
@@ -32,7 +33,7 @@ export default function Chat() {
     if (!text || isLoading) return
 
     setInput('')
-    await sendMessage({ text })
+    await sendMessage({ text }, { body: { model } })
   }
 
   return (
@@ -44,7 +45,7 @@ export default function Chat() {
               ACE Chatbot
             </h1>
             <p className="mt-1 text-sm text-[#1F2937]/70">
-              A simple chat UI layout (Pass 1).
+              Multi-provider chat UI (model selection is wired end-to-end).
             </p>
           </div>
 
@@ -58,13 +59,14 @@ export default function Chat() {
             <select
               id="model"
               name="model"
-              defaultValue="gemini-2.5-flash"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
               className="mt-1 w-full rounded-md border border-[#1F2937]/15 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-offset-2 focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/25"
             >
               <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
               <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-              <option value="gpt-4.1">GPT-4.1 (placeholder)</option>
-              <option value="claude-4">Claude 4 (placeholder)</option>
+              <option value="gpt-4.1">GPT-4.1</option>
+              <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
             </select>
           </div>
         </header>
