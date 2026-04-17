@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///Users/joeltewhare/Documents/Course%20-%20ACE%20with%20JV/tutorials/js/challenge/app/page.tsx"],"sourcesContent":["// TODO: Build your chatbot here\n// See the tutorial for step-by-step instructions\n// See ../sample-solution/ for a working reference\n\nexport default function Chat() {\n  return (\n    <div className=\"flex flex-col h-screen max-w-2xl mx-auto p-4\">\n      <h1 className=\"text-2xl font-bold mb-4\">ACE Chatbot</h1>\n      <p className=\"text-gray-500\">Replace this page with your chatbot. Follow the tutorial instructions.</p>\n    </div>\n  );\n}\n"],"names":["Chat","className"],"mappings":"AAAA,gCAAgC;AAChC,iDAAiD;AACjD,kDAAkD;;;;;;;AAEnC,SAASA;IACtB,qBACE,8OAAC;QAAIC,WAAU;;0BACb,8OAAC;gBAAGA,WAAU;0BAA0B;;;;;;0BACxC,8OAAC;gBAAEA,WAAU;0BAAgB;;;;;;;;;;;;AAGnC"}}]
-}
