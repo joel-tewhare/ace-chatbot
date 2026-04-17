@@ -70,20 +70,20 @@ export async function POST(req: Request) {
     if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       return jsonResponse(
         { error: 'Missing GOOGLE_GENERATIVE_AI_API_KEY' },
-        { status: 501 },
+        { status: 503 },
       )
     }
     providerModel = google(model)
   } else if (model.startsWith('gpt-')) {
     if (!process.env.OPENAI_API_KEY) {
-      return jsonResponse({ error: 'Missing OPENAI_API_KEY' }, { status: 501 })
+      return jsonResponse({ error: 'Missing OPENAI_API_KEY' }, { status: 503 })
     }
     providerModel = openai(model)
   } else if (model.startsWith('claude-')) {
     if (!process.env.ANTHROPIC_API_KEY) {
       return jsonResponse(
         { error: 'Missing ANTHROPIC_API_KEY' },
-        { status: 501 },
+        { status: 503 },
       )
     }
     providerModel = anthropic(model)

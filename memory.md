@@ -5,6 +5,7 @@ Practical notes I want to remember and reuse.
 ## API boundaries
 
 - Validate request shape at public boundaries (e.g. `req.json()` + payload types). Prefer a deterministic `400` for malformed payloads over accidental `500`s from downstream helpers (`convertToModelMessages`, provider calls).
+- Use HTTP status codes that reflect the failure class. Missing credentials/config is an operational problem (often `500`/`503`), not “route not implemented” (`501`), which can mislead debugging and clients.
 
 ## UX + failure modes
 
@@ -13,6 +14,7 @@ Practical notes I want to remember and reuse.
 ## Project deliverables
 
 - Keep README “steps” aligned with repo artifacts. If the README requires a file (e.g. `evals.mjs`), ensure it exists or explicitly mark it as out-of-scope so the deliverable isn’t ambiguous.
+- Evals should test the actual contract: if the prompt requires a JSON object schema, validate required fields/shapes (not just “parsable JSON”), and prefer heuristics that reduce false positives so comparisons aren’t noisy.
 
 ## Message Structure vs UI Display
 

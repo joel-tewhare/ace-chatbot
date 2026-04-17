@@ -14,16 +14,43 @@ const PROMPTS = [
 function evalOnTopic(prompt, text) {
   const p = prompt.toLowerCase()
   const t = (text ?? '').toLowerCase()
-  const keywords = p.includes('closure')
-    ? ['closure', 'function']
-    : ['tailwind', 'utility']
-  return keywords.some((k) => t.includes(k))
+  if (p.includes('closure')) {
+    // Require the core concept (closure) plus at least one supporting concept.
+    const hasClosure = t.includes('closure')
+    const supporting = ['scope', 'lexical', 'enclose', 'outer', 'variable']
+    return hasClosure && supporting.some((k) => t.includes(k))
+  }
+
+  if (p.includes('tailwind') && p.includes('json')) {
+    // Require explicit Tailwind reference plus at least one indicator of utilities/classes.
+    const hasTailwind = t.includes('tailwind')
+    const supporting = ['utility', 'class', 'classes', 'css']
+    return hasTailwind && supporting.some((k) => t.includes(k))
+  }
+
+  return true
 }
 
 function evalValidJson(prompt, text) {
   if (!prompt.toLowerCase().includes('json')) return true
   try {
-    JSON.parse(text)
+    const parsed = JSON.parse(text)
+
+    // Schema-aware check for this challenge prompt.
+    // Expect: { topic: string, bullets: string[] (len>=2) }
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed) ||
+      typeof parsed.topic !== 'string' ||
+      parsed.topic.trim().length === 0 ||
+      !Array.isArray(parsed.bullets) ||
+      parsed.bullets.length < 2 ||
+      !parsed.bullets.every((b) => typeof b === 'string' && b.trim().length > 0)
+    ) {
+      return false
+    }
+
     return true
   } catch {
     return false
