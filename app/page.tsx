@@ -58,7 +58,15 @@ export default function Chat() {
 
     clearError()
     pendingMessageRef.current = text
-    await sendMessage({ text }, { body: { model } })
+    await sendMessage(
+      { text },
+      {
+        body: { model },
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CHAT_API_SECRET ?? ''}`,
+        },
+      },
+    )
   }
 
   return (

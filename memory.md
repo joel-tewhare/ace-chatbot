@@ -50,3 +50,85 @@ Improves clarity without interrupting flow.
 When handling async actions (e.g. sending messages), account for user interaction during the request.
 
 Avoid overwriting user input if the user continues typing while a request is in-flight.
+
+## Security / Backend Notes
+
+### Bearer Token Parsing vs Authorization
+
+- Parsing a bearer token and authorizing a request are separate concerns.
+- `getBearerToken()` only extracts the token from the `Authorization` header.
+- `isAuthorizedChatRequest()` performs the actual access check.
+- Good separation:
+  - parse input first
+  - validate/authorize second
+  - only then continue request handling
+
+---
+
+### Service Config Check vs Request Auth Check
+
+- Two different questions:
+  - **Is the service configured correctly?**
+  - **Is this specific request allowed?**
+- Example:
+  - missing `CHAT_API_SECRET` → `503 Service unavailable`
+  - invalid or missing bearer token → `401 Unauthorized`
+- This keeps configuration problems separate from access problems.
+
+---
+
+### Timing-Safe Secret Comparison
+
+- Comparing secrets with normal string equality can leak timing information because comparison often stops at the first mismatch.
+- `timingSafeEqual` avoids this by comparing all bytes consistently.
+- It works on `Buffer` values, so strings are converted first with `Buffer.from(...)`.
+- Pattern:
+  - convert both values to buffers
+  - check lengths first
+  - compare with `timingSafeEqual`
+
+---
+
+### What a Buffer Is
+
+- A `Buffer` is a byte-level representation of data.
+- In security code, buffers are useful because some lower-level comparison utilities work on raw bytes rather than JavaScript strings.
+- In this case, strings are converted to buffers so they can be compared safely with `timingSafeEqual`.
+
+---
+
+### Client-Controlled System Messages Are a Prompt Injection Risk
+
+- `system` messages control assistant behaviour, so they should not be trusted from the client.
+- A safe pattern is to strip client-sent `system` messages before sending content to the model.
+- This keeps behaviour controlled by the server rather than the user.
+- Server-owned system prompts are safer than client-owned system prompts.
+
+---
+
+### Sanitize Before Execution
+
+- Before calling the model:
+  - validate payload shape
+  - remove untrusted message types
+  - reject empty/invalid message arrays
+- This is the LLM equivalent of validating request bodies before hitting business logic.
+
+---
+
+### Dev Gate vs Real Auth
+
+- A shared client/server bearer token can act as a lightweight dev gate.
+- If the token is stored in a `NEXT_PUBLIC_...` variable, it is visible to the browser and is not a true secret.
+- This pattern is useful for learning request validation flow, but it is not production authentication.
+- In production, this should be replaced by real auth such as sessions or JWT-based identity checks.
+
+### Submit Handlers Can Carry Both UX Guards and Request Auth
+
+- A frontend submit handler can do more than send data:
+  - prevent default form submission
+  - trim and validate input
+  - block duplicate sends while loading
+  - clear stale UI errors
+  - attach request metadata such as model selection or auth headers
+- This keeps request preparation close to the user action that triggers it.

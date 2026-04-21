@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto'
 import { streamText, convertToModelMessages } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
@@ -30,7 +31,34 @@ function isValidChatMessage(value: unknown): boolean {
   return role === 'user' || role === 'assistant' || role === 'system'
 }
 
+function getBearerToken(authorization: string | null): string | null {
+  if (!authorization || !authorization.startsWith('Bearer ')) return null
+  const token = authorization.slice('Bearer '.length).trim()
+  return token.length > 0 ? token : null
+}
+
+function isAuthorizedChatRequest(req: Request): boolean {
+  const secret = process.env.CHAT_API_SECRET
+  if (!secret) return false
+  const token = getBearerToken(req.headers.get('authorization'))
+  if (!token) return false
+  const a = Buffer.from(token, 'utf8')
+  const b = Buffer.from(secret, 'utf8')
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
+}
+
 export async function POST(req: Request) {
+  const secretConfirmed =
+    typeof process.env.CHAT_API_SECRET === 'string' &&
+    process.env.CHAT_API_SECRET.length > 0
+  if (!secretConfirmed) {
+    return jsonResponse({ error: 'Service unavailable' }, { status: 503 })
+  }
+  if (!isAuthorizedChatRequest(req)) {
+    return jsonResponse({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let body: unknown
   try {
     body = await req.json()
@@ -49,6 +77,14 @@ export async function POST(req: Request) {
     return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 })
   }
 
+  const messagesWithoutSystem = messages.filter(
+    (m) => isRecord(m) && m.role !== 'system',
+  )
+
+  if (messagesWithoutSystem.length === 0) {
+    return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 })
+  }
+
   const model =
     typeof requestedModel === 'string' && requestedModel.trim().length > 0
       ? requestedModel.trim()
@@ -60,7 +96,7 @@ export async function POST(req: Request) {
 
   let modelMessages
   try {
-    modelMessages = await convertToModelMessages(messages)
+    modelMessages = await convertToModelMessages(messagesWithoutSystem)
   } catch {
     return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 })
   }
