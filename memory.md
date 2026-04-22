@@ -26,7 +26,8 @@ Pattern: raw data → transform → UI-ready data
 ### Rendering vs Formatting (AI responses)
 
 - If AI output includes structure (lists, emphasis, sections), formatting the string alone is not sufficient.
-- Ensure the UI has a **rendering layer** (e.g. markdown renderer) before attempting to improve formatting.
+- Fix the rendering layer first before attempting string-level formatting.
+- Ensure the UI has a **rendering layer** (e.g. markdown renderer).
 - Pattern:
   - raw text → renderer (e.g. markdown) → styled UI
 - Formatting problems are often **rendering problems in disguise**.
@@ -54,6 +55,9 @@ Pattern: raw data → transform → UI-ready data
 - Pattern:
   - apply `prose`
   - then **compress spacing for chat context**
+- `prose` should act as the baseline typography system.
+- Component-level styling should be used for targeted overrides.
+- Prefer a single “owner” of vertical rhythm to avoid overlapping spacing rules.
 
 ---
 
@@ -176,7 +180,8 @@ Avoid overwriting user input if the user continues typing while a request is in-
   - validate payload shape
   - remove untrusted message types
   - reject empty/invalid message arrays
-- This is the LLM equivalent of validating request bodies before hitting business logic.
+- Prefer validating payload shape before execution rather than relying on downstream errors.
+- Explicit validation improves debuggability and makes behaviour clearer (e.g. which message types are supported or ignored).
 
 ---
 
@@ -198,6 +203,34 @@ Avoid overwriting user input if the user continues typing while a request is in-
   - clear stale UI errors
   - attach request metadata such as model selection or auth headers
 - This keeps request preparation close to the user action that triggers it.
+
+---
+
+## Type Safety (Scaling)
+
+- Avoid `any` for structured data such as message parts.
+- Use narrow types or discriminated unions as features expand (e.g. text vs image parts).
+- Strong typing prevents silent breakage as data shapes evolve.
+
+---
+
+## Config Consistency
+
+- Avoid duplicating configuration (e.g. model IDs in UI and API).
+- Prefer a single shared source of truth to prevent drift and mismatched behaviour.
+
+---
+
+## Review Triage
+
+- Classify review findings:
+  - Accept (act now)
+  - Accept (note for later)
+  - Partially accept
+- For small projects, prioritise:
+  - correctness issues
+  - clear maintenance risks
+- Capture the rest as memory instead of over-optimising code.
 
 ---
 
