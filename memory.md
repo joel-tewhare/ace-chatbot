@@ -218,6 +218,7 @@ Avoid overwriting user input if the user continues typing while a request is in-
 
 - Avoid duplicating configuration (e.g. model IDs in UI and API).
 - Prefer a single shared source of truth to prevent drift and mismatched behaviour.
+- Baseline or PR review should explicitly name duplicated allowlists, similar to naming missing shared types.
 
 ---
 
