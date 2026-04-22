@@ -2,6 +2,7 @@
 
 import { useChat } from '@ai-sdk/react'
 import type { FormEvent } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 function getTextFromParts(parts: Array<any>): string {
@@ -126,13 +127,87 @@ export default function Chat() {
                     >
                       <div
                         className={[
-                          'max-w-[85%] whitespace-pre-wrap px-4 py-3 text-sm shadow-sm',
+                          'max-w-[85%] px-4 py-3 text-sm shadow-sm',
                           isUser
                             ? 'rounded-2xl rounded-br-md bg-[#3B82F6] text-white'
                             : 'rounded-2xl rounded-bl-md bg-[#1F2937]/5 text-[#1F2937]',
                         ].join(' ')}
                       >
-                        {m.text || (
+                        {m.text ? (
+                          <div
+                            className={[
+                              'prose prose-sm max-w-none min-w-0',
+                              isUser && 'prose-invert',
+                              // Compact chat-friendly rhythm (not long-form article)
+                              'prose-p:mt-0 prose-p:mb-2',
+                              'prose-headings:mb-1.5',
+                              'prose-h1:mb-1.5 prose-h2:mb-1.5 prose-h3:mb-1.5',
+                              'prose-h2:mt-2.5 prose-h3:mt-2',
+                              'prose-h1:mt-0',
+                              'prose-h1:text-base prose-h2:text-sm',
+                              'prose-ul:my-2 prose-ol:my-2',
+                              'prose-li:my-1',
+                              'prose-hr:my-2',
+                              'prose-blockquote:my-2',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
+                          >
+                            <ReactMarkdown
+                              components={{
+                                p: ({ children }) => (
+                                  <p className="leading-7">{children}</p>
+                                ),
+                                ul: ({ children }) => (
+                                  <ul className="list-disc space-y-1.5 pl-5">
+                                    {children}
+                                  </ul>
+                                ),
+                                ol: ({ children }) => (
+                                  <ol className="list-decimal space-y-1.5 pl-5">
+                                    {children}
+                                  </ol>
+                                ),
+                                li: ({ children }) => (
+                                  <li className="leading-6">{children}</li>
+                                ),
+                                strong: ({ children }) => (
+                                  <strong className="font-semibold">
+                                    {children}
+                                  </strong>
+                                ),
+                                h1: ({ children }) => (
+                                  <h1 className="text-base font-semibold leading-6">
+                                    {children}
+                                  </h1>
+                                ),
+                                h2: ({ children }) => (
+                                  <h2 className="text-sm font-semibold uppercase tracking-[0.14em]">
+                                    {children}
+                                  </h2>
+                                ),
+                                h3: ({ children }) => (
+                                  <h3 className="text-sm font-semibold">
+                                    {children}
+                                  </h3>
+                                ),
+                                code: ({ children }) => (
+                                  <code
+                                    className={`rounded px-1 py-0.5 text-[0.95em] ${
+                                      isUser
+                                        ? 'bg-white/15 text-white'
+                                        : 'bg-[#1F2937]/10 text-[#1F2937]'
+                                    }`}
+                                  >
+                                    {children}
+                                  </code>
+                                ),
+                              }}
+                            >
+                              {m.text}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
                           <span className="text-[#1F2937]/60">
                             (non-text content)
                           </span>

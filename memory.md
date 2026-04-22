@@ -1,5 +1,3 @@
-# memory.md
-
 Practical notes I want to remember and reuse.
 
 ## API boundaries
@@ -22,6 +20,42 @@ AI SDK messages are structured as parts (not plain text).
 UI should derive display-friendly text (e.g. via helper) rather than using raw message shape directly.
 
 Pattern: raw data → transform → UI-ready data
+
+---
+
+### Rendering vs Formatting (AI responses)
+
+- If AI output includes structure (lists, emphasis, sections), formatting the string alone is not sufficient.
+- Ensure the UI has a **rendering layer** (e.g. markdown renderer) before attempting to improve formatting.
+- Pattern:
+  - raw text → renderer (e.g. markdown) → styled UI
+- Formatting problems are often **rendering problems in disguise**.
+
+---
+
+### Markdown Rendering Pattern (Chat UI)
+
+- Use a markdown renderer (e.g. `react-markdown`) for AI responses instead of displaying raw text.
+- This enables:
+  - bold/emphasis
+  - lists
+  - structured sections
+- Keep rendering logic separate from message data.
+
+---
+
+### Typography in Chat vs Document UI
+
+- Tailwind Typography (`prose`) is designed for documents, not chat.
+- In chat UIs:
+  - reduce vertical spacing
+  - keep lists compact
+  - prevent large heading sizes
+- Pattern:
+  - apply `prose`
+  - then **compress spacing for chat context**
+
+---
 
 ## SDK Layered Abstraction (AI Chat)
 
@@ -50,6 +84,36 @@ Improves clarity without interrupting flow.
 When handling async actions (e.g. sending messages), account for user interaction during the request.
 
 Avoid overwriting user input if the user continues typing while a request is in-flight.
+
+---
+
+## Agent Execution Patterns
+
+### Scope before execution
+
+- Before making changes, identify:
+  - which files are relevant
+  - why those files are sufficient
+- Prefer narrow, explicit scope over broad repo scanning.
+
+---
+
+### Avoid agent substitution
+
+- If a requested solution cannot be implemented (e.g. missing dependency), the correct behaviour is to **stop and report**, not substitute with an alternative approach.
+- “Close enough” solutions reduce predictability and control.
+
+---
+
+### Minimal change principle
+
+- Prefer small, targeted changes over rewrites.
+- Preserve:
+  - component structure
+  - data flow
+  - existing contracts
+
+---
 
 ## Security / Backend Notes
 
@@ -123,6 +187,8 @@ Avoid overwriting user input if the user continues typing while a request is in-
 - This pattern is useful for learning request validation flow, but it is not production authentication.
 - In production, this should be replaced by real auth such as sessions or JWT-based identity checks.
 
+---
+
 ### Submit Handlers Can Carry Both UX Guards and Request Auth
 
 - A frontend submit handler can do more than send data:
@@ -132,3 +198,42 @@ Avoid overwriting user input if the user continues typing while a request is in-
   - clear stale UI errors
   - attach request metadata such as model selection or auth headers
 - This keeps request preparation close to the user action that triggers it.
+
+---
+
+## Permission / Capability Thinking
+
+### Least privilege (practical)
+
+- Start with minimal capability, then expand only as required.
+- Do not remove capabilities blindly — ensure the task still has a valid execution path.
+
+---
+
+### Permissions are environment-dependent
+
+- Capability paths differ by tool:
+  - in some environments, file access may depend on shell access
+- Removing one capability (e.g. shell) can unintentionally remove another (e.g. file reading).
+
+---
+
+### Restrict the task if you can’t restrict the tool
+
+- In coarse-grained environments:
+  - simulate least privilege via constraints
+  - explicitly forbid:
+    - network access
+    - installs
+    - unrelated commands
+- Control is enforced through instruction discipline, not tooling.
+
+---
+
+### Match permissions to task risk
+
+- Low-risk tasks (UI, formatting, local logic):
+  - minimal concern for strict permission control
+- Higher-risk tasks (APIs, auth, external integrations):
+  - apply strict least-privilege thinking
+  - prefer restricted environments where possible
