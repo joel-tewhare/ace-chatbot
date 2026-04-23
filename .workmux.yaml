@@ -1,0 +1,8 @@
+sandbox:
+  enabled: true
+  target: agent
+
+files:
+  copy: []
+  symlink:
+    - node_modules
