@@ -71,6 +71,44 @@ Chat flow is split across layers:
 
 Each layer has a clear responsibility.
 
+---
+
+## Tool calling workflow notes
+
+- Treat tool calling as a loop: user → model decides → tool executes code → tool result returns to model → model writes final chat response.
+- A tool has two important layers:
+  - the model-facing contract: `description` + `inputSchema`
+  - the server execution boundary: `execute`
+- Keep pass isolation clear:
+  - Pass 1 defines a complete tool, including `description`, `inputSchema`, and `execute`.
+  - Pass 2 wires the completed tool into `streamText`.
+  - Avoid mixing unfinished tool logic with live model-loop wiring.
+- The first tool should be implemented end-to-end before adding more tools, to prove the tool-calling loop works.
+- After the pattern is proven, later tools can reuse the structure with lighter planning.
+
+---
+
+## Calculator tool notes
+
+- The calculator tool uses `{ expression: string }` rather than a bare string so the tool input shape stays explicit and extensible.
+- The model is responsible for translating natural-language math, such as “15% of 320”, into a valid expression like `0.15 * 320`.
+- The helper evaluator turns the expression string into executable JavaScript and returns the raw result.
+- The tool `execute` function validates and formats the helper result before returning it to the model.
+- Direct evaluation with `Function` or `eval` is tutorial-only and unsafe for production because it can execute arbitrary JavaScript.
+- In production, replace direct evaluation with a dedicated math parser, sandbox, or constrained evaluator.
+
+---
+
+## Workflow calibration notes
+
+- Calculator is low-risk enough for normal local development, but still useful as a workflow rehearsal.
+- File-reading and URL-fetching tools are higher-risk because they expand the tool attack surface to filesystem and network access.
+- Use sandboxing or least-privilege mode once tools can read files or fetch URLs.
+- Mock mode should preserve the same input/output shape as real execution, even if the implementation is stubbed.
+- Mock results should be realistic in shape and error behaviour so integration does not drift too far from real execution.
+
+---
+
 ## UI Feedback Pattern — System Status
 
 Show lightweight system status near the interaction point (e.g. “Ready” / “Working”).
