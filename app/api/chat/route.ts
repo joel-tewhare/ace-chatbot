@@ -1,5 +1,11 @@
 import { timingSafeEqual } from 'node:crypto'
-import { streamText, convertToModelMessages, tool, jsonSchema } from 'ai'
+import {
+  streamText,
+  convertToModelMessages,
+  tool,
+  jsonSchema,
+  stepCountIs,
+} from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
@@ -183,6 +189,8 @@ export async function POST(req: Request) {
   const result = streamText({
     model: providerModel,
     messages: modelMessages,
+    tools: chatTools,
+    stopWhen: stepCountIs(5),
   })
 
   return result.toUIMessageStreamResponse()
