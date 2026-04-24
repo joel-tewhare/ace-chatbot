@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto'
-import { streamText, convertToModelMessages } from 'ai'
+import { streamText, convertToModelMessages, tool, jsonSchema } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
@@ -35,6 +35,59 @@ function getBearerToken(authorization: string | null): string | null {
   if (!authorization || !authorization.startsWith('Bearer ')) return null
   const token = authorization.slice('Bearer '.length).trim()
   return token.length > 0 ? token : null
+}
+
+/**
+ * Tutorial-only evaluator: compiles `expression` with `Function` and runs it.
+ * **Unsafe for production** (arbitrary code execution). Use a dedicated math parser or sandbox if exposing to real users.
+ */
+function evaluateMathExpressionTutorial(expression: string): unknown {
+  const trimmed = expression.trim()
+  if (!trimmed) {
+    throw new Error('Expression is empty.')
+  }
+  return new Function(`return (${trimmed})`)()
+}
+
+const calculateTool = tool({
+  description:
+    'Evaluates a mathematical expression as a plain numeric string (e.g. arithmetic, percentages rewritten as decimals like 0.15 * 320). Use when the user asks for a calculation, numeric result, or "how much is X% of Y" after rewriting to an expression the evaluator can parse. Do not use for non-math requests.',
+  inputSchema: jsonSchema<{ expression: string }>({
+    type: 'object',
+    properties: {
+      expression: {
+        type: 'string',
+        description:
+          'The expression to evaluate, using standard arithmetic notation (numbers, + - * / parentheses).',
+      },
+    },
+    required: ['expression'],
+    additionalProperties: false,
+  }),
+  execute: async ({ expression }) => {
+    try {
+      const value = evaluateMathExpressionTutorial(expression)
+      if (typeof value === 'number') {
+        if (!Number.isFinite(value)) {
+          return 'Could not evaluate: result is not a finite number.'
+        }
+        return String(value)
+      }
+      if (typeof value === 'bigint') {
+        return String(value)
+      }
+      return `Could not evaluate: expected a number, got ${typeof value}.`
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error during evaluation.'
+      return `Could not evaluate: ${message}`
+    }
+  },
+})
+
+/** Server chat tools map; `calculate` is the first and only tool for this slice. */
+const chatTools = {
+  calculate: calculateTool,
 }
 
 function isAuthorizedChatRequest(req: Request): boolean {
