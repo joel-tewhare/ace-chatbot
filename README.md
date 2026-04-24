@@ -44,6 +44,14 @@ npm install
 npm run dev
 ```
 
+Run the local multi-provider eval (see `scripts/eval.mjs`):
+
+```bash
+npm run eval:run
+```
+
+Set `RUN_LOCAL_EVAL_MOCK=1` for layout-only output with no API calls.
+
 Create a .env.local file:
 
 GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
