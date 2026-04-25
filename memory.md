@@ -88,6 +88,7 @@ Each layer has a clear responsibility.
   - Avoid mixing unfinished tool logic with live model-loop wiring.
 - The first tool should be implemented end-to-end before adding more tools, to prove the tool-calling loop works.
 - After the pattern is proven, later tools can reuse the structure with lighter planning.
+- Cross-reference: see Workflow insights — tool calls require step control to complete the response loop.
 
 ---
 
