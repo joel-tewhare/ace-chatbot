@@ -81,16 +81,19 @@ function evaluateMathExpressionTutorial(expression: string): unknown {
   }
 }
 
+/** Tool result string prefix for failure paths (success returns a plain numeric string). */
+const calculateToolError = (detail: string) => `Could not evaluate: ${detail}`
+
 const calculateTool = tool({
   description:
-    'Evaluates a mathematical expression as a plain numeric string (e.g. arithmetic, percentages rewritten as decimals like 0.15 * 320). Use when the user asks for a calculation, numeric result, or "how much is X% of Y" after rewriting to an expression the evaluator can parse. Do not use for non-math requests.',
+    'Use for math-only questions where you need a precise numeric result: arithmetic, unit conversions written as numbers, or “how much is X% of Y” after you rewrite the percent as a decimal (e.g. 0.15 * 320). Pass one expression: numbers, + - * /, parentheses, ** if needed. Do not use for non-math, explanations without a numeric answer, or code execution.',
   inputSchema: jsonSchema<{ expression: string }>({
     type: 'object',
     properties: {
       expression: {
         type: 'string',
         description:
-          'The expression to evaluate, using standard arithmetic notation (numbers, + - * / parentheses).',
+          'One mathematical expression. Natural-language (e.g. “15% of 320”) must be rewritten to a numeric expression before calling.',
       },
     },
     required: ['expression'],
@@ -99,34 +102,40 @@ const calculateTool = tool({
   execute: async ({ expression }) => {
     try {
       if (expression === undefined || expression === null) {
-        return 'Could not evaluate: missing expression.'
+        return calculateToolError('missing expression.')
       }
       if (typeof expression !== 'string') {
-        return 'Could not evaluate: expression must be a string.'
+        return calculateToolError('expression must be a string.')
       }
       const value = evaluateMathExpressionTutorial(expression)
       if (typeof value === 'number') {
         if (!Number.isFinite(value)) {
-          return 'Could not evaluate: result is not a finite number (e.g. division by zero or overflow).'
+          return calculateToolError(
+            'result is not a finite number (e.g. division by zero or overflow).',
+          )
         }
         return String(value)
       }
       if (typeof value === 'bigint') {
         return String(value)
       }
-      return `Could not evaluate: expected a numeric result, got ${typeof value}.`
+      return calculateToolError(
+        `expected a numeric result, got ${typeof value}.`,
+      )
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown error during evaluation.'
-      return `Could not evaluate: ${message}`
+        error instanceof Error
+          ? error.message
+          : 'Unknown error during evaluation.'
+      return calculateToolError(message)
     }
   },
 })
 
-/** Server chat tools map; `calculate` is the first and only tool for this slice. */
+/** Tools object passed to `streamText` — add future tools here with matching keys. */
 const chatTools = {
   calculate: calculateTool,
-}
+} as const
 
 function isAuthorizedChatRequest(req: Request): boolean {
   const secret = process.env.CHAT_API_SECRET
@@ -222,6 +231,7 @@ export async function POST(req: Request) {
     model: providerModel,
     messages: modelMessages,
     tools: chatTools,
+    // Tool call + at least one follow-up model step; cap steps to limit runaway loops.
     stopWhen: stepCountIs(5),
   })
 
