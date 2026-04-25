@@ -13,6 +13,9 @@ Practical notes I want to remember and reuse.
 
 - Keep README “steps” aligned with repo artifacts. If the README requires a file (e.g. `evals.mjs`), ensure it exists or explicitly mark it as out-of-scope so the deliverable isn’t ambiguous.
 - Evals should test the actual contract: if the prompt requires a JSON object schema, validate required fields/shapes (not just “parsable JSON”), and prefer heuristics that reduce false positives so comparisons aren’t noisy.
+- Eval scripts should fail the run when checks fail, not only print failed booleans. Track aggregate failure state across cases and set a non-zero exit code so regressions are visible in automation.
+- If an eval mirrors app tool logic instead of importing it, mark the duplication explicitly and keep the contract in sync with the route. Prefer shared logic once the tutorial constraint is gone.
+- Keep JSON evals strict when the prompt contract says JSON-only. Markdown fences should fail strict parsing; use structured outputs later if the product needs stronger JSON adherence.
 
 ## Message Structure vs UI Display
 
