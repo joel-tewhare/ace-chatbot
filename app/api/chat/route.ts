@@ -52,7 +52,33 @@ function evaluateMathExpressionTutorial(expression: string): unknown {
   if (!trimmed) {
     throw new Error('Expression is empty.')
   }
-  return new Function(`return (${trimmed})`)()
+  let run: () => unknown
+  try {
+    run = new Function(`return (${trimmed})`) as () => unknown
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error('Invalid expression syntax.')
+    }
+    throw error
+  }
+  try {
+    return run()
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error('Invalid expression syntax.')
+    }
+    if (error instanceof ReferenceError) {
+      throw new Error(
+        'Expression references an undefined name; use only numbers and arithmetic operators.',
+      )
+    }
+    if (error instanceof RangeError) {
+      throw new Error(
+        error.message || 'Numeric overflow or out-of-range result.',
+      )
+    }
+    throw error
+  }
 }
 
 const calculateTool = tool({
@@ -72,17 +98,23 @@ const calculateTool = tool({
   }),
   execute: async ({ expression }) => {
     try {
+      if (expression === undefined || expression === null) {
+        return 'Could not evaluate: missing expression.'
+      }
+      if (typeof expression !== 'string') {
+        return 'Could not evaluate: expression must be a string.'
+      }
       const value = evaluateMathExpressionTutorial(expression)
       if (typeof value === 'number') {
         if (!Number.isFinite(value)) {
-          return 'Could not evaluate: result is not a finite number.'
+          return 'Could not evaluate: result is not a finite number (e.g. division by zero or overflow).'
         }
         return String(value)
       }
       if (typeof value === 'bigint') {
         return String(value)
       }
-      return `Could not evaluate: expected a number, got ${typeof value}.`
+      return `Could not evaluate: expected a numeric result, got ${typeof value}.`
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown error during evaluation.'
