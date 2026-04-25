@@ -78,6 +78,8 @@ function evaluateMathExpressionTutorial(expression) {
   }
 }
 
+// This `calculate` tool mirrors `app/api/chat/route.ts` for eval-only runs. Keep both
+// in sync if you change tool description, input schema, or execute behaviour.
 const calculateTool = tool({
   description:
     'Evaluate one mathematical expression and return the result. Use only for math or numeric calculations. If the user asks for a percentage, rewrite it first, for example "15% of 320" becomes "0.15 * 320". Do not use for non-math requests.',
@@ -238,6 +240,8 @@ async function main() {
     return
   }
 
+  let hadFailure = false
+
   for (const prompt of PROMPTS) {
     console.log('\n=== Prompt ===\n' + prompt + '\n')
 
@@ -260,6 +264,10 @@ async function main() {
         onTopic: evalOnTopic(prompt, text),
         validJson: evalValidJson(prompt, text),
         concise: evalConcise(prompt, text),
+      }
+
+      if (Object.values(checks).some((ok) => !ok)) {
+        hadFailure = true
       }
 
       console.log(`-- ${p.name} --`)
@@ -294,11 +302,19 @@ async function main() {
         concise: evalConcise(test.prompt, text),
       }
 
+      if (Object.values(checks).some((ok) => !ok)) {
+        hadFailure = true
+      }
+
       console.log(`-- ${p.name} --`)
       console.log(text.trim())
       console.log('checks:', checks)
       console.log('')
     }
+  }
+
+  if (hadFailure) {
+    process.exitCode = 1
   }
 }
 
