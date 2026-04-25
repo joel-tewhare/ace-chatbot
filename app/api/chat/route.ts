@@ -231,7 +231,7 @@ export async function POST(req: Request) {
     model: providerModel,
     messages: modelMessages,
     tools: chatTools,
-    // Tool call + at least one follow-up model step; cap steps to limit runaway loops.
+    //5 = Tool call + at least one follow-up model step. Important to cap steps to limit runaway loops.
     stopWhen: stepCountIs(5),
   })
 

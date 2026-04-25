@@ -109,6 +109,109 @@ Each layer has a clear responsibility.
 
 ---
 
+## Tool calling — wiring and control
+
+- Tool calling requires both:
+  - `tools: {}` to expose capabilities to the model
+  - step control (`stopWhen: stepCountIs(n)`) to allow the model to continue after tool execution
+- Without step control, the model may call a tool but never produce a final text response.
+- A typical tool loop is:
+  - model decides → tool executes → result returned → model produces final answer
+- Step limits act as both:
+  - execution control (prevent infinite loops)
+  - safety boundary (limit model/tool chaining)
+
+---
+
+## Tool execution contract
+
+- Tool `execute` functions must:
+  - never throw errors
+  - always return a predictable output (string in this implementation)
+- Establish a clear contract:
+  - success → plain numeric string (e.g. "248186")
+  - failure → consistent prefix (e.g. "Could not evaluate: <reason>")
+- Consistent output shape improves model behaviour and reduces hallucination or retry loops.
+
+---
+
+## Error handling patterns
+
+- Separate evaluation stages:
+  - compile (syntax errors)
+  - run (runtime errors like ReferenceError, RangeError)
+- Map low-level JS errors into user-meaningful messages:
+  - SyntaxError → invalid expression
+  - ReferenceError → undefined name / invalid variable
+  - RangeError → overflow / out-of-range
+- Handle non-finite numbers (NaN, Infinity) explicitly at the tool boundary.
+- Validate inputs before execution (type + presence), not just outputs after execution.
+
+---
+
+## Model ↔ tool responsibility split
+
+- Model is responsible for:
+  - deciding when to call the tool
+  - translating natural language into a valid expression
+  - presenting the final response to the user
+- Tool is responsible for:
+  - executing deterministic logic
+  - validating input/output
+  - returning safe, structured results
+- Tool results are signals; the model controls final wording.
+
+---
+
+## Description and routing
+
+- Tool `description` is critical for correct tool selection.
+- Good descriptions:
+  - clearly define when to use the tool
+  - clearly define when NOT to use the tool
+  - include transformation expectations (e.g. rewrite percentages to decimals)
+- Better descriptions lead to fewer incorrect tool calls and more reliable multi-tool behaviour.
+
+---
+
+## Tool registry pattern
+
+- Maintain a central `chatTools` object:
+  - maps tool names → implementations
+  - passed into `streamText`
+- Use `as const` to:
+  - lock tool names to literal types
+  - improve type safety and consistency as tools scale
+- Treat this as infrastructure, not feature-specific code.
+
+---
+
+## Workflow insights
+
+- Pass isolation is important:
+  - Pass 2 = wiring only
+  - Pass 3 = behaviour refinement (no new capability)
+  - Pass 4 = polish only
+- Do not mix:
+  - tool definition
+  - wiring
+  - behaviour tuning
+- First tool should be built end-to-end to validate the loop, then reused as a pattern for additional tools.
+
+---
+
+## System design insight
+
+- Tool calling shifts work from:
+  - probabilistic model reasoning
+  → deterministic code execution
+- This improves:
+  - correctness (math, file access, etc.)
+  - efficiency (fewer tokens, faster execution)
+- Tools act as controlled boundaries where untrusted model input meets trusted system logic.
+
+---
+
 ## UI Feedback Pattern — System Status
 
 Show lightweight system status near the interaction point (e.g. “Ready” / “Working”).
