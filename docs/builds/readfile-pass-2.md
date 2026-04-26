@@ -31,3 +31,20 @@
 **Next**
 
 - Pass 3 — derived logic: stable error categories and consistent user/assistant presentation.
+
+### Review notes
+
+- Pass 2 introduced the readFile tool as a real filesystem boundary; file access is now a controlled but sensitive capability within the chat route.
+- Path resolution uses `process.cwd()` which enables project-root-relative reads; basic guardrails were added to block access to `.env`, `.git`, and `node_modules` paths.
+- Tool execution follows a safe pattern:
+  - never throws
+  - always returns a string
+  - uses consistent `readFile:` prefix for error signalling
+- Input validation is layered:
+  - JSON schema enforces `{ path: string }`
+  - runtime checks handle undefined, non-string, and empty values
+- Error handling correctly maps common filesystem errors (`ENOENT`, `EISDIR`, `ENOTDIR`, `EACCES`, `EPERM`) to predictable tool responses.
+- Empty file behaviour is correct: returns an empty string rather than an error, matching the tool contract.
+- UI wiring for `FileReadContextSlot` is functioning, but the “Reading file…” state is not visibly noticeable due to fast local execution; behaviour is likely correct but difficult to observe without artificial delay.
+- Error messaging is still raw and slightly inconsistent; normalization and user-facing wording are intentionally deferred to Pass 3.
+- Tool description is well-scoped and clearly communicates when to use and avoid the tool, improving model routing behaviour.
