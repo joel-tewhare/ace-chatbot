@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Full checks for LLM app projects
+# Full checks: ace-chatbot (Next.js, AI SDK chat route)
 # Use before review, handoff, merge, or release.
+# Root scripts: build (required here), dev, start, eval:run (optional; needs API access).
 #
 # Sections:
 # 1. Deterministic code checks
@@ -53,6 +54,10 @@ echo
 echo "→ Chat flow reminder"
 echo "  Confirm the intended request and response flow still works in the UI"
 echo "  after changes to chat hooks, route handlers, or provider wiring."
+echo
+echo "→ Optional eval script"
+echo "  After model or prompt changes, you can run: npm run eval:run"
+echo "  (not part of this script; may call external APIs and use env keys)."
 echo
 
 echo "=== LLM output evaluation reminders ==="
