@@ -10,7 +10,7 @@ dotenv.config({ path: '.env.local' })
 
 const PROMPTS = [
   'In one sentence, explain what a closure is in JavaScript.',
-  'Return valid JSON only: {"topic":"<topic>","bullets":["...","..."]} for "Tailwind utility classes".',
+  'Return valid JSON only: {"topic":"<topic>","bullets":["...","..."]} for "Tailwind utility classes". Use exactly two bullets.',
 ]
 
 const TOOL_PROMPTS = [
@@ -35,6 +35,7 @@ const TOOL_PROMPTS = [
       'cannot calculate',
       'not a number',
       'valid numerical expression',
+      'valid mathematical expression',
     ],
   },
 ]
@@ -270,7 +271,7 @@ function evalValidJson(prompt, text) {
   if (!prompt.toLowerCase().includes('json')) return true
 
   try {
-    const parsed = JSON.parse(text)
+    const parsed = JSON.parse(text.trim())
 
     if (
       typeof parsed !== 'object' ||

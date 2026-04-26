@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "eval:run": "node scripts/eval.mjs"
+    "eval:run": "node evals.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
