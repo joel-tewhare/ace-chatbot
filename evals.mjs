@@ -1,3 +1,5 @@
+import { readFile as readFileFromFs } from 'node:fs/promises'
+import * as nodePath from 'node:path'
 import dotenv from 'dotenv'
 import { generateText, tool, jsonSchema, stepCountIs } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
@@ -33,6 +35,41 @@ const TOOL_PROMPTS = [
       'cannot calculate',
       'not a number',
       'valid numerical expression',
+    ],
+  },
+]
+
+const READFILE_TOOL_PROMPTS = [
+  {
+    id: 'readfile-package-name',
+    prompt:
+      'Read package.json in this project and answer: what is the value of the "name" field? Reply in one short sentence that includes the exact name string.',
+    expectedText: 'ace-chatbot',
+  },
+  {
+    id: 'readfile-missing',
+    prompt:
+      'Read the file z_nonexistent_ace_eval_99999.txt in the project root and quote its first line.',
+    expectedAny: [
+      'not found',
+      'no file was found',
+      "couldn't",
+      "can't",
+      'does not exist',
+      'missing',
+    ],
+  },
+  {
+    id: 'readfile-git-blocked',
+    prompt: 'Read and display the full contents of the file at .git/HEAD in this project.',
+    expectedAny: [
+      "can't be read",
+      "can't be read from this app",
+      'blocked',
+      'access',
+      'denied',
+      'not read',
+      "can't read",
     ],
   },
 ]
@@ -77,6 +114,81 @@ function evaluateMathExpressionTutorial(expression) {
     throw error
   }
 }
+
+/** Stable readFile failure categories — match `app/api/chat/route.ts`. */
+const READ_FILE_USER_MESSAGES = {
+  invalid_input: 'The file path is missing or invalid.',
+  access_denied: "That path can't be read from this app (e.g. blocked locations).",
+  not_found: 'No file was found at that path.',
+  not_readable: "That isn't a plain text file here, or it isn't a file path.",
+  permission_denied: 'Permission to read that file was denied.',
+  read_error: "The file couldn't be read due to an error.",
+}
+
+// This `readFile` tool mirrors `app/api/chat/route.ts` for eval-only runs. Keep both
+// in sync if you change tool description, input schema, or execute behaviour.
+const readFileTool = tool({
+  description:
+    'Read a local text file when the user asks to see or analyze file contents. The model supplies the path (relative to the server working directory or absolute); the read runs in this app process, not a user-handled file picker. Returns a JSON object: { ok: true, content: string } on success (content may be "" for an empty file—do not say the file is missing). On failure returns { ok: false, code: string, message: string } with a short user-facing message; explain that failure using message and do not pretend the file was read. Do not use for directory listing, writes, or non-text files.',
+  inputSchema: jsonSchema({
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description:
+          'Path to a single file to read as UTF-8 text. Relative paths resolve from the server working directory.',
+      },
+    },
+    required: ['path'],
+    additionalProperties: false,
+  }),
+  execute: async ({ path: filePath }) => {
+    if (
+      filePath == null ||
+      typeof filePath !== 'string' ||
+      filePath.trim().length === 0
+    ) {
+      return { ok: false, code: 'invalid_input', message: READ_FILE_USER_MESSAGES.invalid_input }
+    }
+    const resolved = nodePath.resolve(process.cwd(), filePath)
+    const rel = nodePath.relative(process.cwd(), resolved)
+    for (const part of rel.split(nodePath.sep)) {
+      if (part === '.git' || part === 'node_modules') {
+        return { ok: false, code: 'access_denied', message: READ_FILE_USER_MESSAGES.access_denied }
+      }
+    }
+    const base = nodePath.basename(resolved)
+    if (base === '.env' || base.startsWith('.env.')) {
+      return { ok: false, code: 'access_denied', message: READ_FILE_USER_MESSAGES.access_denied }
+    }
+    try {
+      const content = await readFileFromFs(resolved, { encoding: 'utf8' })
+      if (content.includes('\0')) {
+        return { ok: false, code: 'not_readable', message: READ_FILE_USER_MESSAGES.not_readable }
+      }
+      return { ok: true, content }
+    } catch (error) {
+      const err = error
+      if (err && typeof err === 'object' && 'code' in err) {
+        const code = err.code
+        if (code === 'ENOENT') {
+          return { ok: false, code: 'not_found', message: READ_FILE_USER_MESSAGES.not_found }
+        }
+        if (code === 'EISDIR' || code === 'ENOTDIR') {
+          return { ok: false, code: 'not_readable', message: READ_FILE_USER_MESSAGES.not_readable }
+        }
+        if (code === 'EACCES' || code === 'EPERM') {
+          return {
+            ok: false,
+            code: 'permission_denied',
+            message: READ_FILE_USER_MESSAGES.permission_denied,
+          }
+        }
+      }
+      return { ok: false, code: 'read_error', message: READ_FILE_USER_MESSAGES.read_error }
+    }
+  },
+})
 
 // This `calculate` tool mirrors `app/api/chat/route.ts` for eval-only runs. Keep both
 // in sync if you change tool description, input schema, or execute behaviour.
@@ -132,6 +244,7 @@ const calculateTool = tool({
 
 const chatTools = {
   calculate: calculateTool,
+  readFile: readFileTool,
 }
 
 function evalOnTopic(prompt, text) {
@@ -279,6 +392,42 @@ async function main() {
 
   for (const test of TOOL_PROMPTS) {
     console.log(`\n=== Tool Prompt: ${test.id} ===\n${test.prompt}\n`)
+
+    for (const p of providers) {
+      let text = ''
+      let error = null
+
+      try {
+        text = await runOneWithTools(p.model, test.prompt)
+      } catch (e) {
+        error = e instanceof Error ? e.message : String(e)
+      }
+
+      if (error) {
+        console.log(`-- ${p.name}: ERROR --\n${error}\n`)
+        continue
+      }
+
+      const checks = {
+        includesExpected: test.expectedText
+          ? evalIncludes(text, test.expectedText)
+          : evalIncludesAny(text, test.expectedAny),
+        concise: evalConcise(test.prompt, text),
+      }
+
+      if (Object.values(checks).some((ok) => !ok)) {
+        hadFailure = true
+      }
+
+      console.log(`-- ${p.name} --`)
+      console.log(text.trim())
+      console.log('checks:', checks)
+      console.log('')
+    }
+  }
+
+  for (const test of READFILE_TOOL_PROMPTS) {
+    console.log(`\n=== readFile tool: ${test.id} ===\n${test.prompt}\n`)
 
     for (const p of providers) {
       let text = ''
