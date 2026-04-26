@@ -33,3 +33,11 @@
 
 - Pass 4 — polish: copy, visual consistency, trust framing, dead-code cleanup if any.
 
+### Review notes
+
+- Pass 3 introduced a structured result contract for readFile: success `{ ok: true, content }` and failure `{ ok: false, code, message }`.
+- Error handling is now deterministic with a fixed taxonomy (a defined set of error categories), removing reliance on string parsing and improving model reliability.
+- User-facing error messages are consistent and no longer expose raw filesystem details.
+- Empty file handling is correct and treated as a valid success case.
+- Null byte detection provides a simple guardrail for non-text content in a text-only tool.
+- Clear separation of responsibilities: tool handles execution + validation, model handles user-facing response.
