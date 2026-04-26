@@ -3,13 +3,93 @@
 import { useChat } from '@ai-sdk/react'
 import type { FormEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 function getTextFromParts(parts: Array<any>): string {
   return parts
     .filter((p) => p?.type === 'text' && typeof p.text === 'string')
     .map((p) => p.text)
     .join('')
+}
+
+/**
+ * Pass 1 layout shell: reserved hook for file-read path / tool affordance.
+ * Pass 2+ replaces visibility and content when the assistant uses readFile.
+ */
+function FileReadContextSlot() {
+  return (
+    <div
+      className="hidden"
+      data-slot="file-read-context"
+      aria-hidden
+    />
+  )
+}
+
+function getMessageMarkdownComponents(isUser: boolean) {
+  return {
+    p: ({ children }: { children?: ReactNode }) => (
+      <p className="leading-7">{children}</p>
+    ),
+    ul: ({ children }: { children?: ReactNode }) => (
+      <ul className="list-disc space-y-1.5 pl-5">{children}</ul>
+    ),
+    ol: ({ children }: { children?: ReactNode }) => (
+      <ol className="list-decimal space-y-1.5 pl-5">{children}</ol>
+    ),
+    li: ({ children }: { children?: ReactNode }) => (
+      <li className="leading-6">{children}</li>
+    ),
+    strong: ({ children }: { children?: ReactNode }) => (
+      <strong className="font-semibold">{children}</strong>
+    ),
+    h1: ({ children }: { children?: ReactNode }) => (
+      <h1 className="text-base font-semibold leading-6">{children}</h1>
+    ),
+    h2: ({ children }: { children?: ReactNode }) => (
+      <h2 className="text-sm font-semibold uppercase tracking-[0.14em]">
+        {children}
+      </h2>
+    ),
+    h3: ({ children }: { children?: ReactNode }) => (
+      <h3 className="text-sm font-semibold">{children}</h3>
+    ),
+    pre: ({ children }: { children?: ReactNode }) => (
+      <pre
+        className={[
+          'mt-2 max-h-[min(24rem,50vh)] overflow-x-auto overflow-y-auto rounded-lg border p-3 text-left text-xs font-normal leading-relaxed [tab-size:2]',
+          isUser
+            ? 'border-white/20 bg-white/10'
+            : 'border-[#1F2937]/15 bg-[#1F2937]/[0.04] text-[#1F2937]',
+        ].join(' ')}
+      >
+        {children}
+      </pre>
+    ),
+    code: ({
+      className,
+      children,
+    }: {
+      className?: string
+      children?: ReactNode
+    }) => {
+      const isBlock = Boolean(className && /language-[\w-]+/.test(className))
+      if (isBlock) {
+        return <code className={className}>{children}</code>
+      }
+      return (
+        <code
+          className={`rounded px-1 py-0.5 text-[0.95em] ${
+            isUser
+              ? 'bg-white/15 text-white'
+              : 'bg-[#1F2937]/10 text-[#1F2937]'
+          }`}
+        >
+          {children}
+        </code>
+      )
+    },
+  }
 }
 
 export default function Chat() {
@@ -136,76 +216,39 @@ export default function Chat() {
                         {m.text ? (
                           <div
                             className={[
-                              'prose prose-sm max-w-none min-w-0',
-                              isUser && 'prose-invert',
-                              // Compact chat-friendly rhythm (not long-form article)
-                              'prose-p:mt-0 prose-p:mb-2',
-                              'prose-headings:mb-1.5',
-                              'prose-h1:mb-1.5 prose-h2:mb-1.5 prose-h3:mb-1.5',
-                              'prose-h2:mt-2.5 prose-h3:mt-2',
-                              'prose-h1:mt-0',
-                              'prose-h1:text-base prose-h2:text-sm',
-                              'prose-ul:my-2 prose-ol:my-2',
-                              'prose-li:my-1',
-                              'prose-hr:my-2',
-                              'prose-blockquote:my-2',
+                              'min-w-0',
+                              !isUser && 'flex flex-col gap-2 text-[#1F2937]',
                             ]
                               .filter(Boolean)
                               .join(' ')}
                           >
-                            <ReactMarkdown
-                              components={{
-                                p: ({ children }) => (
-                                  <p className="leading-7">{children}</p>
-                                ),
-                                ul: ({ children }) => (
-                                  <ul className="list-disc space-y-1.5 pl-5">
-                                    {children}
-                                  </ul>
-                                ),
-                                ol: ({ children }) => (
-                                  <ol className="list-decimal space-y-1.5 pl-5">
-                                    {children}
-                                  </ol>
-                                ),
-                                li: ({ children }) => (
-                                  <li className="leading-6">{children}</li>
-                                ),
-                                strong: ({ children }) => (
-                                  <strong className="font-semibold">
-                                    {children}
-                                  </strong>
-                                ),
-                                h1: ({ children }) => (
-                                  <h1 className="text-base font-semibold leading-6">
-                                    {children}
-                                  </h1>
-                                ),
-                                h2: ({ children }) => (
-                                  <h2 className="text-sm font-semibold uppercase tracking-[0.14em]">
-                                    {children}
-                                  </h2>
-                                ),
-                                h3: ({ children }) => (
-                                  <h3 className="text-sm font-semibold">
-                                    {children}
-                                  </h3>
-                                ),
-                                code: ({ children }) => (
-                                  <code
-                                    className={`rounded px-1 py-0.5 text-[0.95em] ${
-                                      isUser
-                                        ? 'bg-white/15 text-white'
-                                        : 'bg-[#1F2937]/10 text-[#1F2937]'
-                                    }`}
-                                  >
-                                    {children}
-                                  </code>
-                                ),
-                              }}
+                            {!isUser ? <FileReadContextSlot /> : null}
+                            <div
+                              className={[
+                                'prose prose-sm max-w-none min-w-0',
+                                isUser && 'prose-invert',
+                                'prose-p:mt-0 prose-p:mb-2',
+                                'prose-headings:mb-1.5',
+                                'prose-h1:mb-1.5 prose-h2:mb-1.5 prose-h3:mb-1.5',
+                                'prose-h2:mt-2.5 prose-h3:mt-2',
+                                'prose-h1:mt-0',
+                                'prose-h1:text-base prose-h2:text-sm',
+                                'prose-ul:my-2 prose-ol:my-2',
+                                'prose-li:my-1',
+                                'prose-hr:my-2',
+                                'prose-blockquote:my-2',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
                             >
-                              {m.text}
-                            </ReactMarkdown>
+                              <ReactMarkdown
+                                components={getMessageMarkdownComponents(
+                                  isUser,
+                                )}
+                              >
+                                {m.text}
+                              </ReactMarkdown>
+                            </div>
                           </div>
                         ) : (
                           <span className="text-[#1F2937]/60">
