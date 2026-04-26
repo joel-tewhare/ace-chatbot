@@ -160,6 +160,16 @@ const readFileTool = tool({
       return 'readFile: path is empty.'
     }
     const resolved = nodePath.resolve(process.cwd(), filePath)
+    const rel = nodePath.relative(process.cwd(), resolved)
+    for (const part of rel.split(nodePath.sep)) {
+      if (part === '.git' || part === 'node_modules') {
+        return 'readFile: access to this path is not allowed.'
+      }
+    }
+    const base = nodePath.basename(resolved)
+    if (base === '.env' || base.startsWith('.env.')) {
+      return 'readFile: access to this path is not allowed.'
+    }
     try {
       return await readFileFromFs(resolved, { encoding: 'utf8' })
     } catch (error) {

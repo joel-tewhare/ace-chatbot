@@ -31,4 +31,3 @@
 **Next**
 
 - Pass 3 — derived logic: stable error categories and consistent user/assistant presentation.
-
