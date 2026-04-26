@@ -30,3 +30,9 @@
 **Next**
 
 - Pass 2 — data wiring: register `readFile`, read pipeline, and align loading/error channels with the plan.
+
+### Review notes
+
+- Code block vs inline rendering confirmed working via markdown helper logic
+- FileReadContextSlot is a structural placeholder for future tool UI, not a tool itself
+- Assistant messages require a flexible container to support multi-part content (slot + text)
