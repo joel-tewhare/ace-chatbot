@@ -149,11 +149,11 @@ type ReadFileToolResult =
 
 const READ_FILE_USER_MESSAGES: Record<ReadFileErrorCode, string> = {
   invalid_input: 'The file path is missing or invalid.',
-  access_denied: 'That path is not available to read.',
-  not_found: 'No file exists at that path.',
-  not_readable: 'That path is not a readable text file.',
-  permission_denied: 'The file could not be read because access was denied.',
-  read_error: 'The file could not be read.',
+  access_denied: "That path can't be read from this app (e.g. blocked locations).",
+  not_found: 'No file was found at that path.',
+  not_readable: "That isn't a plain text file here, or it isn't a file path.",
+  permission_denied: 'Permission to read that file was denied.',
+  read_error: "The file couldn't be read due to an error.",
 }
 
 function readFileToolFailure(code: ReadFileErrorCode): ReadFileToolResult {
@@ -162,7 +162,7 @@ function readFileToolFailure(code: ReadFileErrorCode): ReadFileToolResult {
 
 const readFileTool = tool({
   description:
-    'Read a local text file when the user asks to see or analyze file contents. Supply the file path (relative to the app working directory or absolute). Returns a JSON object: { ok: true, content: string } on success (content may be "" for an empty file—do not say the file is missing). On failure returns { ok: false, code: string, message: string } with a short user-facing message; explain that failure to the user using message and do not pretend the file was read. Do not use for directory listing, writes, or non-text files.',
+    'Read a local text file when the user asks to see or analyze file contents. The model supplies the path (relative to the server working directory or absolute); the read runs in this app process, not a user-handled file picker. Returns a JSON object: { ok: true, content: string } on success (content may be "" for an empty file—do not say the file is missing). On failure returns { ok: false, code: string, message: string } with a short user-facing message; explain that failure using message and do not pretend the file was read. Do not use for directory listing, writes, or non-text files.',
   inputSchema: jsonSchema<{ path: string }>({
     type: 'object',
     properties: {
@@ -176,13 +176,11 @@ const readFileTool = tool({
     additionalProperties: false,
   }),
   execute: async ({ path: filePath }): Promise<ReadFileToolResult> => {
-    if (filePath === undefined || filePath === null) {
-      return readFileToolFailure('invalid_input')
-    }
-    if (typeof filePath !== 'string') {
-      return readFileToolFailure('invalid_input')
-    }
-    if (filePath.trim().length === 0) {
+    if (
+      filePath == null ||
+      typeof filePath !== 'string' ||
+      filePath.trim().length === 0
+    ) {
       return readFileToolFailure('invalid_input')
     }
     const resolved = nodePath.resolve(process.cwd(), filePath)

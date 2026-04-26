@@ -45,7 +45,7 @@ function FileReadContextSlot({ pending }: { pending: boolean }) {
   }
   return (
     <div
-      className="min-h-[1.25rem] text-xs text-[#1F2937]/60"
+      className="min-h-[1.25rem] text-sm text-[#1F2937]/70"
       data-slot="file-read-context"
       aria-live="polite"
     >
@@ -81,6 +81,18 @@ function getMessageMarkdownComponents(isUser: boolean) {
     ),
     h3: ({ children }: { children?: ReactNode }) => (
       <h3 className="text-sm font-semibold">{children}</h3>
+    ),
+    blockquote: ({ children }: { children?: ReactNode }) => (
+      <blockquote
+        className={[
+          'my-2 border-l-[3px] pl-3 text-[0.95em] leading-relaxed [font-variant-ligatures:none]',
+          isUser
+            ? 'border-white/35 text-white/95'
+            : 'border-[#1F2937]/30 bg-[#1F2937]/[0.06] text-[#1F2937]/90',
+        ].join(' ')}
+      >
+        {children}
+      </blockquote>
     ),
     pre: ({ children }: { children?: ReactNode }) => (
       <pre
@@ -189,6 +201,10 @@ export default function Chat() {
             </h1>
             <p className="mt-1 text-sm text-[#1F2937]/70">
               Multi-provider chat UI (model selection is wired end-to-end).
+            </p>
+            <p className="mt-1.5 text-xs text-[#1F2937]/55">
+              If you ask about a file, the model may read it on this machine; it
+              picks the path from the chat—there is no separate file browser.
             </p>
           </div>
 
