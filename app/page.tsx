@@ -13,16 +13,44 @@ function getTextFromParts(parts: Array<any>): string {
 }
 
 /**
- * Pass 1 layout shell: reserved hook for file-read path / tool affordance.
- * Pass 2+ replaces visibility and content when the assistant uses readFile.
+ * True while a readFile tool part is still in progress (not finished with output or error).
  */
-function FileReadContextSlot() {
+function isReadFileToolPending(parts: Array<{ type?: string; state?: string }>) {
+  for (const p of parts) {
+    if (p.type !== 'tool-readFile' || !p.state) continue
+    if (
+      p.state === 'output-available' ||
+      p.state === 'output-error' ||
+      p.state === 'output-denied'
+    ) {
+      continue
+    }
+    return true
+  }
+  return false
+}
+
+/**
+ * File-read tool affordance: shows a light loading hint while readFile is in flight.
+ */
+function FileReadContextSlot({ pending }: { pending: boolean }) {
+  if (!pending) {
+    return (
+      <div
+        className="hidden"
+        data-slot="file-read-context"
+        aria-hidden
+      />
+    )
+  }
   return (
     <div
-      className="hidden"
+      className="min-h-[1.25rem] text-xs text-[#1F2937]/60"
       data-slot="file-read-context"
-      aria-hidden
-    />
+      aria-live="polite"
+    >
+      Reading file…
+    </div>
   )
 }
 
@@ -129,6 +157,7 @@ export default function Chat() {
       id: m.id,
       role: m.role,
       text: getTextFromParts(m.parts ?? []),
+      readFilePending: isReadFileToolPending(m.parts ?? []),
     }))
   }, [messages])
 
@@ -222,7 +251,9 @@ export default function Chat() {
                               .filter(Boolean)
                               .join(' ')}
                           >
-                            {!isUser ? <FileReadContextSlot /> : null}
+                            {!isUser ? (
+                              <FileReadContextSlot pending={m.readFilePending} />
+                            ) : null}
                             <div
                               className={[
                                 'prose prose-sm max-w-none min-w-0',

@@ -1,4 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
+import { readFile as readFileFromFs } from 'node:fs/promises'
+import * as nodePath from 'node:path'
 import {
   streamText,
   convertToModelMessages,
@@ -132,9 +134,56 @@ const calculateTool = tool({
   },
 })
 
+const readFileTool = tool({
+  description:
+    'Read a local text file when the user asks to see or analyze file contents. Supply the file path (relative to the app working directory or absolute). Returns the file text on success, or a short readFile error string if the path is missing, the file is not found, is not a readable file, or cannot be read. Do not use for directory listing, writes, or non-text files.',
+  inputSchema: jsonSchema<{ path: string }>({
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description:
+          'Path to a single file to read as UTF-8 text. Relative paths resolve from the server working directory.',
+      },
+    },
+    required: ['path'],
+    additionalProperties: false,
+  }),
+  execute: async ({ path: filePath }) => {
+    if (filePath === undefined || filePath === null) {
+      return 'readFile: path is required.'
+    }
+    if (typeof filePath !== 'string') {
+      return 'readFile: path must be a string.'
+    }
+    if (filePath.trim().length === 0) {
+      return 'readFile: path is empty.'
+    }
+    const resolved = nodePath.resolve(process.cwd(), filePath)
+    try {
+      return await readFileFromFs(resolved, { encoding: 'utf8' })
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException
+      if (err.code === 'ENOENT') {
+        return 'readFile: file not found.'
+      }
+      if (err.code === 'EISDIR' || err.code === 'ENOTDIR') {
+        return 'readFile: path is not a readable file.'
+      }
+      if (err.code === 'EACCES' || err.code === 'EPERM') {
+        return 'readFile: permission denied.'
+      }
+      const message =
+        error instanceof Error ? error.message : 'Unknown read error.'
+      return `readFile: could not read file (${message}).`
+    }
+  },
+})
+
 /** Tools object passed to `streamText` — add future tools here with matching keys. */
 const chatTools = {
   calculate: calculateTool,
+  readFile: readFileTool,
 } as const
 
 function isAuthorizedChatRequest(req: Request): boolean {
