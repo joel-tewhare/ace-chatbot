@@ -134,9 +134,35 @@ const calculateTool = tool({
   },
 })
 
+/** Stable readFile failure categories for the model and user-facing copy. */
+type ReadFileErrorCode =
+  | 'invalid_input'
+  | 'access_denied'
+  | 'not_found'
+  | 'not_readable'
+  | 'permission_denied'
+  | 'read_error'
+
+type ReadFileToolResult =
+  | { ok: true; content: string }
+  | { ok: false; code: ReadFileErrorCode; message: string }
+
+const READ_FILE_USER_MESSAGES: Record<ReadFileErrorCode, string> = {
+  invalid_input: 'The file path is missing or invalid.',
+  access_denied: 'That path is not available to read.',
+  not_found: 'No file exists at that path.',
+  not_readable: 'That path is not a readable text file.',
+  permission_denied: 'The file could not be read because access was denied.',
+  read_error: 'The file could not be read.',
+}
+
+function readFileToolFailure(code: ReadFileErrorCode): ReadFileToolResult {
+  return { ok: false, code, message: READ_FILE_USER_MESSAGES[code] }
+}
+
 const readFileTool = tool({
   description:
-    'Read a local text file when the user asks to see or analyze file contents. Supply the file path (relative to the app working directory or absolute). Returns the file text on success, or a short readFile error string if the path is missing, the file is not found, is not a readable file, or cannot be read. Do not use for directory listing, writes, or non-text files.',
+    'Read a local text file when the user asks to see or analyze file contents. Supply the file path (relative to the app working directory or absolute). Returns a JSON object: { ok: true, content: string } on success (content may be "" for an empty file—do not say the file is missing). On failure returns { ok: false, code: string, message: string } with a short user-facing message; explain that failure to the user using message and do not pretend the file was read. Do not use for directory listing, writes, or non-text files.',
   inputSchema: jsonSchema<{ path: string }>({
     type: 'object',
     properties: {
@@ -149,43 +175,45 @@ const readFileTool = tool({
     required: ['path'],
     additionalProperties: false,
   }),
-  execute: async ({ path: filePath }) => {
+  execute: async ({ path: filePath }): Promise<ReadFileToolResult> => {
     if (filePath === undefined || filePath === null) {
-      return 'readFile: path is required.'
+      return readFileToolFailure('invalid_input')
     }
     if (typeof filePath !== 'string') {
-      return 'readFile: path must be a string.'
+      return readFileToolFailure('invalid_input')
     }
     if (filePath.trim().length === 0) {
-      return 'readFile: path is empty.'
+      return readFileToolFailure('invalid_input')
     }
     const resolved = nodePath.resolve(process.cwd(), filePath)
     const rel = nodePath.relative(process.cwd(), resolved)
     for (const part of rel.split(nodePath.sep)) {
       if (part === '.git' || part === 'node_modules') {
-        return 'readFile: access to this path is not allowed.'
+        return readFileToolFailure('access_denied')
       }
     }
     const base = nodePath.basename(resolved)
     if (base === '.env' || base.startsWith('.env.')) {
-      return 'readFile: access to this path is not allowed.'
+      return readFileToolFailure('access_denied')
     }
     try {
-      return await readFileFromFs(resolved, { encoding: 'utf8' })
+      const content = await readFileFromFs(resolved, { encoding: 'utf8' })
+      if (content.includes('\0')) {
+        return readFileToolFailure('not_readable')
+      }
+      return { ok: true, content }
     } catch (error) {
       const err = error as NodeJS.ErrnoException
       if (err.code === 'ENOENT') {
-        return 'readFile: file not found.'
+        return readFileToolFailure('not_found')
       }
       if (err.code === 'EISDIR' || err.code === 'ENOTDIR') {
-        return 'readFile: path is not a readable file.'
+        return readFileToolFailure('not_readable')
       }
       if (err.code === 'EACCES' || err.code === 'EPERM') {
-        return 'readFile: permission denied.'
+        return readFileToolFailure('permission_denied')
       }
-      const message =
-        error instanceof Error ? error.message : 'Unknown read error.'
-      return `readFile: could not read file (${message}).`
+      return readFileToolFailure('read_error')
     }
   },
 })
