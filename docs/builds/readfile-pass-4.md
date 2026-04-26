@@ -32,3 +32,12 @@
 **Next**
 
 - None (plan complete for readFile v1).
+
+### Review notes
+
+- Pass 4 focused on copy clarity and visual consistency without introducing new behaviour.
+- Error messages are now clearer and avoid implying success or exposing internal system details.
+- Trust boundary is communicated in simple, non-alarmist language (model-initiated file reads, no file picker).
+- “Reading file…” state visually aligns with existing “Thinking…” pattern, improving UI consistency.
+- Blockquote styling successfully distinguishes quoted file excerpts from normal text.
+- Minor simplification of validation logic improved readability without changing behaviour.
