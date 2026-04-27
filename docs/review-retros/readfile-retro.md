@@ -52,3 +52,21 @@ These are **minimal, optional** wording nudges. No full rewrites.
 ## memory.md change summary
 
 - **Workflow calibration — higher-risk tools:** Dropped the standalone bullet that repeated “enforce policy on canonical target…” in full; replaced with a **pointer** to **Filesystem Tool Boundaries** for lexical vs canonical path and symlinks, so the rule lives in one place with the `realpath` / `lstat` context.
+
+## Fix now
+
+- Deduplicate canonical path rule in memory.md.
+  - Remove duplicated wording across Workflow calibration and Filesystem Tool Boundaries.
+  - Keep the full rule (realpath, symlinks, lexical vs canonical) under Filesystem Tool Boundaries.
+  - Replace any duplicate entries with a short reference to that section.
+
+- Improve review-retro skill to reduce memory duplication.
+  - Add a rule to merge or cross-reference existing memory.md entries instead of appending duplicate full notes.
+
+- Improve retro skill memory handling.
+  - Add guidance to check existing memory.md before suggesting new notes.
+  - Prefer extending existing entries over creating new ones when the concept already exists.
+
+- Align implementation summary verification wording.
+  - Ensure implementation summaries clearly reference checks/evals artefacts or explicitly state verification status.
+  - Avoid ambiguity between “not run” and “passed” across artefacts.
