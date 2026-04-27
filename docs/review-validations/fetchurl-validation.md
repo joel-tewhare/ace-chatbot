@@ -86,17 +86,54 @@ The tool copy in `route.ts` (lines 233–235) says not to use for “local netwo
 
 ### Fix now
 
-- **SSRF / policy mismatch (Finding 1):** Tighten policy if this deployment must assume untrusted or broadly reachable chat clients. Start with **manual redirects + re-validate each `Location`**, and address **link-local / metadata** ranges (including `169.254.0.0/16` and similar) in the same validation path. Add **connect-time** checks if you need protection against **DNS to private** (hostname-only rules are not enough).
-- **Optional quick win:** Block obvious **link-local** IPv4 in `validatePublicHttpUrl` even before larger redirect work (covers direct `169.254.`* in this codebase today).
+- **SSRF / URL validation gaps (Finding 1):**
+  Current validation only checks the initial URL and does not re-validate redirects or resolved IPs. This can allow safe-looking URLs to redirect to internal or sensitive endpoints.
+
+  Focus on understanding and tightening boundaries rather than full hardening immediately:
+  - Be aware that `redirect: 'follow'` skips validation on subsequent hops
+  - Recognise that hostname checks alone do not protect against DNS resolving to private/internal IPs
+  - Align implementation more closely with the tool’s “public URL only” contract
+
+- **Quick win: block missing link-local ranges**
+  Extend `validatePublicHttpUrl` to explicitly block link-local / metadata IPs such as:
+  - `169.254.0.0/16` (e.g. `169.254.169.254`)
+  
+  This is a low-effort improvement that closes a real gap without changing overall architecture.
+
+---
 
 ### Defer
 
-- **Deterministic tests (Finding 2)** after behavior is defined (redirect policy, allowlists).
-- **Stricter `Accept` / content-type (Finding 3)** as polish once core SSRF story is clear.
+- **Deterministic tests (Finding 2)**
+  Add targeted tests once URL policy decisions are clearer (e.g. redirect handling, IP validation strategy).
+  
+  Purpose:
+  - Lock in behaviour
+  - Prevent regressions in URL validation rules
+
+- **Redirect and DNS hardening**
+  Defer full implementation of:
+  - Manual redirect handling (`redirect: 'manual'`)
+  - Re-validating each `Location` header
+  - Resolve-then-validate (DNS/IP-level checks)
+
+  These are important for production, but non-trivial and not required at current stage.
+
+- **Stricter content-type handling (Finding 3)**
+  Narrow accepted content types or reject non-text responses to improve output quality and reduce unnecessary processing.
+  
+  This is a quality/polish improvement rather than a core security fix.
+
+---
 
 ### No action
 
-- **Eval triage note (Finding 4)** — no product fix; optional doc/process only.
+- **Eval triage note (Finding 4)**
+  JSON formatting and readFile wording mismatches are not fetchUrl issues.
+  
+  Treat these as:
+  - eval design considerations
+  - not product defects
 
 ---
 
@@ -106,4 +143,3 @@ The tool copy in `route.ts` (lines 233–235) says not to use for “local netwo
 - **Deferred:** Deterministic tests for URL policy and (later) redirect chains; stricter `Accept` / content-type rules.  
 - **Rejected:** None of the main technical findings were wrong; the only “reject” material is *mis-scoping* other eval rows as fetchUrl bugs—**reject that confusion**, not the fetchUrl work.  
 - **Workflow:** External LLM **reviews are signals**; ground claims in `lib/fetchurl.mjs` + route **before** prioritizing. **Capture files** like `docs/checks/fetchurl-checks.md` are **build logs**, not a substitute for targeted tests. Prefer **smallest** hardening: block missing ranges in `validatePublicHttpUrl` first, then **redirect and DNS** if threat model needs it.
-
