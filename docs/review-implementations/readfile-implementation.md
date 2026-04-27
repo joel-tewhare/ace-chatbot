@@ -34,13 +34,14 @@ This document records what was implemented from `docs/review-validations/readfil
 - **“No action”** items (e.g. treating JSON `validJson: false` from fenced output as a product bug) were not changed.
 - **Windows-specific path edge cases** and other deferred portability work are out of scope for this pass.
 
-## Checks / evals to rerun (not run in this task)
+## Checks / evals (verification)
 
-- Full project checks as in `docs/checks/readfile-checks.md` (e.g. production `next build` / project `checks.sh` if used).
-- `npm run eval:run` to refresh `docs/evals`-style output; confirm `**readfile-symlink-git-blocked`** and existing readFile cases, including after cloning on environments where the symlink fixture or `.git` may differ.
+- **Source of truth for pass/fail and dates:** `docs/checks/readfile-checks.md` and `docs/evals/readfile-evals.md`. Claims such as “all checks/evals passed” in review-retro or other notes should match those artefacts (or a dated run log), not a conflicting snapshot line in this file alone.
+- **Rerun after code changes:** Full project checks as in `readfile-checks` (e.g. production `next build` / project `checks.sh` if used). `npm run eval:run` to refresh eval output; confirm `readfile-symlink-git-blocked` and other readFile cases, including on clones where the symlink fixture or `.git` may differ.
 
 ## Notes for review-retro
 
 - **Mirrored policy:** `evals.mjs` and `app/api/chat/route.ts` were updated in the same change; future policy edits should keep both in sync.
 - **Symlink fixture:** `_ace_readfile_eval_symlink_to_git` is intentional for the new eval. Clones without `.git` or with symlink restrictions may need a doc note or CI skip; not addressed here.
 - **Ordering:** `realpath` can surface missing paths before `readFile`; this matches “fail closed” for policy and is consistent for normal missing files.
+

@@ -107,7 +107,7 @@ Each layer has a clear responsibility.
 ## Workflow calibration notes
 
 - Calculator is low-risk enough for normal local development, but still useful as a workflow rehearsal.
-- File-reading and URL-fetching tools are higher-risk because they expand the tool attack surface to filesystem and network access. Path policy (lexical vs canonical target, symlinks) is spelled out under **Filesystem Tool Boundaries** below.
+- File-reading and URL-fetching tools are higher-risk because they expand the tool attack surface to filesystem and network access. Read-side path and symlink policy is defined in one place: **Filesystem Tool Boundaries** below.
 - Use sandboxing or least-privilege mode once tools can read files or fetch URLs.
 - Mock mode should preserve the same input/output shape as real execution, even if the implementation is stubbed.
 - Mock results should be realistic in shape and error behaviour so integration does not drift too far from real execution.
