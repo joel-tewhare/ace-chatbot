@@ -29,6 +29,11 @@ The narrative bullets under Fix now about `redirect: 'follow'`, DNS-to-private r
 - **No action — Finding 4:** Eval triage (JSON fence / readFile missing-file rows vs fetchUrl).
 - **N/A — Finding 5:** Positive confirmation only; no product change.
 
+## Evidence
+
+- **Code-grounded validation:** yes (see `docs/review-validations/fetchurl-validation.md` and narrative in this doc).
+- **Checks / evals:** not run in this pass.
+
 ## Checks / evals to rerun
 
 Per task instructions, checks and evals were **not** run as part of this pass. After merging, rerun as appropriate for your workflow, for example:

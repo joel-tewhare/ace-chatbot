@@ -1,26 +1,27 @@
 ### Review retro summary
 
-- The useful implemented finding was narrow but real: direct `169.254.0.0/16` link-local / metadata URLs are now blocked in `validatePublicHttpUrl`.
-- The bigger SSRF concern remains deferred: redirects and DNS resolution can still bypass string-only hostname validation.
-- The review correctly separated fetchUrl-specific eval results from unrelated JSON/readFile eval noise.
-- Shared fetchUrl logic in `lib/fetchurl.mjs` remains the right ownership point for future URL policy hardening.
-- Captured checks/evals prove this pass built and current fetchUrl evals passed, but they do not replace targeted URL-policy regression tests.
+- The useful review finding was the SSRF boundary gap: the tool promised public URL fetching, but validation did not fully enforce that contract.
+- The implemented fix was intentionally narrow: block direct `169.254.0.0/16` metadata/link-local IPv4 literals in `validatePublicHttpUrl`.
+- Redirect validation and DNS resolution checks remain deferred; the partial fix should not be treated as full SSRF hardening.
+- Shared fetchUrl logic in `lib/fetchurl.mjs` remains worth keeping because route and eval behaviour stay aligned.
+- The eval noise was correctly scoped out: non-fetchUrl JSON/readFile rows were not product bugs for this feature.
+- Build and eval logs are useful evidence, but they are not a substitute for targeted deterministic checks around URL policy.
 
 ### Worth keeping
 
-- Server-side URL tools need validation against the eventual network target, not only the submitted URL string.
-- When review findings expose a security boundary gap, prefer a small deterministic regression check for that boundary when feasible.
-- Scope eval failures to the feature under review; unrelated eval noise should not become product work for the current feature.
+- Server-side fetch tools need network-target validation, not just original URL string validation.
+- When full hardening is deferred, apply small concrete protections where cheap, then document what remains unsolved.
+- Keep tool policy centralized so API routes, evals, and future checks do not drift.
+- Treat external review findings as signals that need validation against code and implementation records before becoming work.
 
 ### Rejected or not useful
 
-- No main technical finding was rejected as wrong.
-- Full redirect/DNS hardening, deterministic URL-policy tests, and stricter content-type handling were accepted as useful but deferred.
-- Treating unrelated JSON/readFile eval rows as fetchUrl bugs was rejected as mis-scoped triage.
+- Treating unrelated eval failures as fetchUrl bugs was rejected; those rows were triage noise for this feature.
+- Full redirect/DNS hardening was not rejected, but deferred as larger production-grade work.
+- Stricter content-type handling was deferred as quality/polish rather than core security work for this pass.
 
 ### Candidate memory notes (append-ready)
 
-Appended to `memory.md` under the existing relevant sections:
+**Memory alignment:** These ideas are already captured under **Review Triage** (partial fix vs complete coverage when deferring hardening) and **Build-pro, checks, and evals — post-implementation notes** → **Tool design: bounded execution over open access** (network-target validation; blocking `169.254.0.0/16` when full validation is deferred). No additional `memory.md` lines to append.
 
-- For server-side URL fetching, validate the actual network target, not only the original URL string. Redirects and DNS resolution can move a public-looking URL to private, loopback, link-local, or metadata addresses unless each hop / resolved target is checked.
-- Captured build/eval logs are evidence, not regression coverage. If a review exposes a policy gap, add a targeted deterministic check for the exact boundary when feasible.
+**Memory update:** No new entries (merged into existing rules) — Review Triage; Build-pro → Tool design: bounded execution over open access.

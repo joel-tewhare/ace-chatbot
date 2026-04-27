@@ -384,6 +384,7 @@ Avoid overwriting user input if the user continues typing while a request is in-
   - correctness issues
   - clear maintenance risks
 - Capture the rest as memory instead of over-optimising code.
+- When accepting a security finding but deferring full hardening, implement the smallest concrete boundary improvement and document the remaining threat model separately. Do not let a partial fix sound like complete coverage.
 
 ---
 
@@ -438,6 +439,7 @@ Context: insights captured after a `/build-pro` run plus checks and eval work on
 
 - External tools should be tightly constrained: protocol checks, localhost blocking, size limits, timeouts, output caps. Treat tools as controlled capabilities, not open-ended access to external systems.
 - For server-side URL fetching, validate the actual network target, not only the original URL string. Redirects and DNS resolution can move a public-looking URL to private, loopback, link-local, or metadata addresses unless each hop / resolved target is checked.
+- If full network-target validation is deferred, still block obvious direct metadata/link-local literals such as `169.254.0.0/16` in the initial URL policy. Small hardening should be explicit about what remains unsolved.
 
 ### Tool contract: structured success/failure shape
 
@@ -458,6 +460,7 @@ Context: insights captured after a `/build-pro` run plus checks and eval work on
 
 - Test not only successful tool use but also blocked and invalid inputs (e.g. localhost, malformed URLs) so security boundaries are verified, not just happy paths.
 - Captured build/eval logs are evidence, not regression coverage. If a review exposes a policy gap, add a targeted deterministic check for the exact boundary when feasible.
+- When a pass skips project checks or evals, state that explicitly next to any code-grounded validation (e.g. in implementation summaries) so readers do not read “validated” as a full automated run.
 
 ### Eval robustness: flexible matching
 
