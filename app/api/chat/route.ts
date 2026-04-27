@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto'
-import { readFile as readFileFromFs } from 'node:fs/promises'
+import { readFile as readFileFromFs, realpath as realpathFromFs } from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import {
   streamText,
@@ -184,18 +184,31 @@ const readFileTool = tool({
       return readFileToolFailure('invalid_input')
     }
     const resolved = nodePath.resolve(process.cwd(), filePath)
-    const rel = nodePath.relative(process.cwd(), resolved)
+    let canonical: string
+    try {
+      canonical = await realpathFromFs(resolved)
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException
+      if (err.code === 'ENOENT') {
+        return readFileToolFailure('not_found')
+      }
+      if (err.code === 'EACCES' || err.code === 'EPERM') {
+        return readFileToolFailure('permission_denied')
+      }
+      return readFileToolFailure('read_error')
+    }
+    const rel = nodePath.relative(process.cwd(), canonical)
     for (const part of rel.split(nodePath.sep)) {
       if (part === '.git' || part === 'node_modules') {
         return readFileToolFailure('access_denied')
       }
     }
-    const base = nodePath.basename(resolved)
+    const base = nodePath.basename(canonical)
     if (base === '.env' || base.startsWith('.env.')) {
       return readFileToolFailure('access_denied')
     }
     try {
-      const content = await readFileFromFs(resolved, { encoding: 'utf8' })
+      const content = await readFileFromFs(canonical, { encoding: 'utf8' })
       if (content.includes('\0')) {
         return readFileToolFailure('not_readable')
       }

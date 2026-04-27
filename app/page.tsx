@@ -258,7 +258,8 @@ export default function Chat() {
                             : 'rounded-2xl rounded-bl-md bg-[#1F2937]/5 text-[#1F2937]',
                         ].join(' ')}
                       >
-                        {m.text ? (
+                        {m.text ||
+                        (!isUser && m.readFilePending) ? (
                           <div
                             className={[
                               'min-w-0',
@@ -270,32 +271,34 @@ export default function Chat() {
                             {!isUser ? (
                               <FileReadContextSlot pending={m.readFilePending} />
                             ) : null}
-                            <div
-                              className={[
-                                'prose prose-sm max-w-none min-w-0',
-                                isUser && 'prose-invert',
-                                'prose-p:mt-0 prose-p:mb-2',
-                                'prose-headings:mb-1.5',
-                                'prose-h1:mb-1.5 prose-h2:mb-1.5 prose-h3:mb-1.5',
-                                'prose-h2:mt-2.5 prose-h3:mt-2',
-                                'prose-h1:mt-0',
-                                'prose-h1:text-base prose-h2:text-sm',
-                                'prose-ul:my-2 prose-ol:my-2',
-                                'prose-li:my-1',
-                                'prose-hr:my-2',
-                                'prose-blockquote:my-2',
-                              ]
-                                .filter(Boolean)
-                                .join(' ')}
-                            >
-                              <ReactMarkdown
-                                components={getMessageMarkdownComponents(
-                                  isUser,
-                                )}
+                            {m.text ? (
+                              <div
+                                className={[
+                                  'prose prose-sm max-w-none min-w-0',
+                                  isUser && 'prose-invert',
+                                  'prose-p:mt-0 prose-p:mb-2',
+                                  'prose-headings:mb-1.5',
+                                  'prose-h1:mb-1.5 prose-h2:mb-1.5 prose-h3:mb-1.5',
+                                  'prose-h2:mt-2.5 prose-h3:mt-2',
+                                  'prose-h1:mt-0',
+                                  'prose-h1:text-base prose-h2:text-sm',
+                                  'prose-ul:my-2 prose-ol:my-2',
+                                  'prose-li:my-1',
+                                  'prose-hr:my-2',
+                                  'prose-blockquote:my-2',
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
                               >
-                                {m.text}
-                              </ReactMarkdown>
-                            </div>
+                                <ReactMarkdown
+                                  components={getMessageMarkdownComponents(
+                                    isUser,
+                                  )}
+                                >
+                                  {m.text}
+                                </ReactMarkdown>
+                              </div>
+                            ) : null}
                           </div>
                         ) : (
                           <span className="text-[#1F2937]/60">
