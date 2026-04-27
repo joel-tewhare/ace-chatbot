@@ -22,7 +22,7 @@ echo
 echo "=== Deterministic code checks ==="
 echo
 
-echo "→ Production build"
+echo "→ Production build (next build; includes TypeScript validation)"
 npm run build
 echo
 

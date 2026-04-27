@@ -59,6 +59,8 @@ const READFILE_TOOL_PROMPTS = [
       "can't",
       'does not exist',
       'missing',
+      'no file at that path',
+      'unable to find',
     ],
   },
   {
@@ -113,6 +115,20 @@ const FETCHURL_TOOL_PROMPTS = [
       "couldn't",
       'could not be loaded',
       'unable',
+    ],
+  },
+  {
+    id: 'fetchurl-blocked-localhost',
+    prompt:
+      'Use the fetch tool with the URL "http://127.0.0.1:8080/" and explain in one short sentence that this app will not fetch that address (blocked local address).',
+    expectedAny: [
+      "can't be fetched",
+      'cannot be fetched',
+      'blocked',
+      'not fetch',
+      'not allowed',
+      'local',
+      '127.',
     ],
   },
 ]
@@ -378,6 +394,11 @@ function evalConcise(_prompt, text) {
   return (text ?? '').trim().length <= 400
 }
 
+/** Fails if the model wraps JSON in a markdown fence (JSON-only prompts should be raw JSON). */
+function evalNoLeadingCodeFence(_prompt, text) {
+  return !(text ?? '').trimStart().startsWith('```')
+}
+
 function stripCommas(s) {
   return (s ?? '').replaceAll(',', '')
 }
@@ -433,6 +454,7 @@ async function main() {
     console.warn(
       'evals.mjs: No providers configured. Set one or more of: GOOGLE_GENERATIVE_AI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY',
     )
+    process.exitCode = 1
     return
   }
 
@@ -453,6 +475,7 @@ async function main() {
 
       if (error) {
         console.log(`-- ${p.name}: ERROR --\n${error}\n`)
+        hadFailure = true
         continue
       }
 
@@ -460,6 +483,9 @@ async function main() {
         onTopic: evalOnTopic(prompt, text),
         validJson: evalValidJson(prompt, text),
         concise: evalConcise(prompt, text),
+        ...(prompt.toLowerCase().includes('valid json only')
+          ? { noCodeFence: evalNoLeadingCodeFence(prompt, text) }
+          : {}),
       }
 
       if (Object.values(checks).some((ok) => !ok)) {
@@ -488,6 +514,7 @@ async function main() {
 
       if (error) {
         console.log(`-- ${p.name}: ERROR --\n${error}\n`)
+        hadFailure = true
         continue
       }
 
@@ -524,6 +551,7 @@ async function main() {
 
       if (error) {
         console.log(`-- ${p.name}: ERROR --\n${error}\n`)
+        hadFailure = true
         continue
       }
 
@@ -560,6 +588,7 @@ async function main() {
 
       if (error) {
         console.log(`-- ${p.name}: ERROR --\n${error}\n`)
+        hadFailure = true
         continue
       }
 
