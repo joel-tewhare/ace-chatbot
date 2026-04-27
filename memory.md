@@ -14,13 +14,14 @@ Practical notes I want to remember and reuse.
 - Keep README “steps” aligned with repo artifacts. If the README requires a file (e.g. `evals.mjs`), ensure it exists or explicitly mark it as out-of-scope so the deliverable isn’t ambiguous.
 - Evals should test the actual contract: if the prompt requires a JSON object schema, validate required fields/shapes (not just “parsable JSON”), and prefer heuristics that reduce false positives so comparisons aren’t noisy.
 - Eval scripts should fail the run when checks fail, not only print failed booleans. Track aggregate failure state across cases and set a non-zero exit code so regressions are visible in automation.
-- If an eval mirrors app tool logic instead of importing it, mark the duplication explicitly and keep the contract in sync with the route. Prefer shared logic once the tutorial constraint is gone.
+- If an eval mirrors app tool logic instead of importing it, mark the duplication explicitly and keep the contract in sync with the route. When you fix policy or trust-boundary logic, update evals in the same change and add a case that would have failed before (if feasible), so the mirror does not keep hiding the same class of gap. Prefer shared logic once the tutorial constraint is gone.
 - Keep JSON evals strict when the prompt contract says JSON-only. Markdown fences should fail strict parsing; use structured outputs later if the product needs stronger JSON adherence.
 
 ## Message Structure vs UI Display
 
 AI SDK messages are structured as parts (not plain text).
 UI should derive display-friendly text (e.g. via helper) rather than using raw message shape directly.
+Tool parts can be displayable state even before text exists, so pending tool UI should not be gated only on rendered message text.
 
 Pattern: raw data → transform → UI-ready data
 
@@ -106,7 +107,7 @@ Each layer has a clear responsibility.
 ## Workflow calibration notes
 
 - Calculator is low-risk enough for normal local development, but still useful as a workflow rehearsal.
-- File-reading and URL-fetching tools are higher-risk because they expand the tool attack surface to filesystem and network access.
+- File-reading and URL-fetching tools are higher-risk because they expand the tool attack surface to filesystem and network access. Path policy (lexical vs canonical target, symlinks) is spelled out under **Filesystem Tool Boundaries** below.
 - Use sandboxing or least-privilege mode once tools can read files or fetch URLs.
 - Mock mode should preserve the same input/output shape as real execution, even if the implementation is stubbed.
 - Mock results should be realistic in shape and error behaviour so integration does not drift too far from real execution.
@@ -265,6 +266,12 @@ Avoid overwriting user input if the user continues typing while a request is in-
 ---
 
 ## Security / Backend Notes
+
+### Filesystem Tool Boundaries
+
+- For file-reading tools, apply access policy to the canonical filesystem target, not only the lexical user path.
+- `readFile` follows symlinks, so path checks based only on `path.resolve()` can drift from the bytes actually read.
+- Use `realpath` when symlinks are allowed, or `lstat` + reject symlinks when they are out of scope.
 
 ### Bearer Token Parsing vs Authorization
 
