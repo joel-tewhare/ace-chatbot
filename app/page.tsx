@@ -12,12 +12,23 @@ function getTextFromParts(parts: Array<any>): string {
     .join('')
 }
 
+const TOOL_PART_TYPES = {
+  readFile: 'tool-readFile',
+  fetchUrl: 'tool-fetchUrl',
+} as const
+
+type ToolPartName = keyof typeof TOOL_PART_TYPES
+
 /**
- * True while a readFile tool part is still in progress (not finished with output or error).
+ * True while a named tool part is still in progress (not finished with output or error).
  */
-function isReadFileToolPending(parts: Array<{ type?: string; state?: string }>) {
+function isToolPartPending(
+  parts: Array<{ type?: string; state?: string }>,
+  name: ToolPartName,
+) {
+  const type = TOOL_PART_TYPES[name]
   for (const p of parts) {
-    if (p.type !== 'tool-readFile' || !p.state) continue
+    if (p.type !== type || !p.state) continue
     if (
       p.state === 'output-available' ||
       p.state === 'output-error' ||
@@ -31,25 +42,32 @@ function isReadFileToolPending(parts: Array<{ type?: string; state?: string }>) 
 }
 
 /**
- * File-read tool affordance: shows a light loading hint while readFile is in flight.
+ * In-thread tool affordance: light loading hints while readFile or fetchUrl is in flight.
  */
-function FileReadContextSlot({ pending }: { pending: boolean }) {
-  if (!pending) {
+function ToolInFlightSlot({
+  readFilePending,
+  fetchUrlPending,
+}: {
+  readFilePending: boolean
+  fetchUrlPending: boolean
+}) {
+  if (!readFilePending && !fetchUrlPending) {
     return (
       <div
         className="hidden"
-        data-slot="file-read-context"
+        data-slot="tool-in-flight"
         aria-hidden
       />
     )
   }
   return (
     <div
-      className="min-h-[1.25rem] text-sm text-[#1F2937]/70"
-      data-slot="file-read-context"
+      className="flex min-h-[1.25rem] flex-col gap-1 text-sm text-[#1F2937]/70"
+      data-slot="tool-in-flight"
       aria-live="polite"
     >
-      Reading file…
+      {readFilePending ? <div>Reading file…</div> : null}
+      {fetchUrlPending ? <div>Fetching page…</div> : null}
     </div>
   )
 }
@@ -165,12 +183,16 @@ export default function Chat() {
   const composerError = error?.message ?? null
 
   const renderedMessages = useMemo(() => {
-    return messages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      text: getTextFromParts(m.parts ?? []),
-      readFilePending: isReadFileToolPending(m.parts ?? []),
-    }))
+    return messages.map((m) => {
+      const parts = m.parts ?? []
+      return {
+        id: m.id,
+        role: m.role,
+        text: getTextFromParts(parts),
+        readFilePending: isToolPartPending(parts, 'readFile'),
+        fetchUrlPending: isToolPartPending(parts, 'fetchUrl'),
+      }
+    })
   }, [messages])
 
   async function onSubmit(e: FormEvent) {
@@ -203,8 +225,8 @@ export default function Chat() {
               Multi-provider chat UI (model selection is wired end-to-end).
             </p>
             <p className="mt-1.5 text-xs text-[#1F2937]/55">
-              If you ask about a file, the model may read it on this machine; it
-              picks the path from the chat—there is no separate file browser.
+              The model can read a local file path or fetch a public http(s) URL
+              you mention—there is no separate file browser or URL field.
             </p>
           </div>
 
@@ -259,7 +281,8 @@ export default function Chat() {
                         ].join(' ')}
                       >
                         {m.text ||
-                        (!isUser && m.readFilePending) ? (
+                        (!isUser &&
+                          (m.readFilePending || m.fetchUrlPending)) ? (
                           <div
                             className={[
                               'min-w-0',
@@ -269,7 +292,10 @@ export default function Chat() {
                               .join(' ')}
                           >
                             {!isUser ? (
-                              <FileReadContextSlot pending={m.readFilePending} />
+                              <ToolInFlightSlot
+                                readFilePending={m.readFilePending}
+                                fetchUrlPending={m.fetchUrlPending}
+                              />
                             ) : null}
                             {m.text ? (
                               <div

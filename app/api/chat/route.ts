@@ -11,6 +11,7 @@ import {
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
+import { runFetchUrlTool } from '@/lib/fetchurl.mjs'
 
 const SUPPORTED_MODELS = new Set([
   'gemini-2.5-flash',
@@ -229,10 +230,28 @@ const readFileTool = tool({
   },
 })
 
+const fetchUrlTool = tool({
+  description:
+    'Fetch a public web page and return a plain-text excerpt when the user asks to read, summarize, or answer questions about a URL. The model supplies a single absolute http(s) URL. Returns { ok: true, text: string } with the first 5,000 characters of extractable text on success, or { ok: false, code, message } with a short user-facing error—explain failures with message; do not invent page content. Do not use for file://, local networks, or authenticated or private resources.',
+  inputSchema: jsonSchema<{ url: string }>({
+    type: 'object',
+    properties: {
+      url: {
+        type: 'string',
+        description: 'A single public http or https URL to fetch with GET (no auth).',
+      },
+    },
+    required: ['url'],
+    additionalProperties: false,
+  }),
+  execute: async ({ url }) => runFetchUrlTool({ url }),
+})
+
 /** Tools object passed to `streamText` — add future tools here with matching keys. */
 const chatTools = {
   calculate: calculateTool,
   readFile: readFileTool,
+  fetchUrl: fetchUrlTool,
 } as const
 
 function isAuthorizedChatRequest(req: Request): boolean {

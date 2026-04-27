@@ -1,6 +1,7 @@
 import { readFile as readFileFromFs, realpath as realpathFromFs } from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import dotenv from 'dotenv'
+import { runFetchUrlTool } from './lib/fetchurl.mjs'
 import { generateText, tool, jsonSchema, stepCountIs } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
@@ -85,6 +86,33 @@ const READFILE_TOOL_PROMPTS = [
       'denied',
       'not read',
       "can't read",
+    ],
+  },
+]
+
+const FETCHURL_TOOL_PROMPTS = [
+  {
+    id: 'fetchurl-example',
+    prompt:
+      'Use the fetch tool to load https://example.com and say in one short sentence what the main title or heading of the page is (e.g. “Example Domain”).',
+    expectedAny: [
+      'Example Domain',
+      'example.com',
+    ],
+  },
+  {
+    id: 'fetchurl-invalid',
+    prompt:
+      'Use the fetch tool with the URL "not a url" and then explain in one sentence that the tool could not load the page.',
+    expectedAny: [
+      'not valid',
+      'not valid for fetching',
+      'Invalid',
+      'missing',
+      'could not',
+      "couldn't",
+      'could not be loaded',
+      'unable',
     ],
   },
 ]
@@ -277,9 +305,29 @@ const calculateTool = tool({
   },
 })
 
+// This `fetchUrl` tool mirrors `app/api/chat/route.ts` and `lib/fetchurl.mjs`. Keep in sync
+// if you change tool description, input schema, or execute behaviour.
+const fetchUrlTool = tool({
+  description:
+    'Fetch a public web page and return a plain-text excerpt when the user asks to read, summarize, or answer questions about a URL. The model supplies a single absolute http(s) URL. Returns { ok: true, text: string } with the first 5,000 characters of extractable text on success, or { ok: false, code, message } with a short user-facing error—explain failures with message; do not invent page content. Do not use for file://, local networks, or authenticated or private resources.',
+  inputSchema: jsonSchema({
+    type: 'object',
+    properties: {
+      url: {
+        type: 'string',
+        description: 'A single public http or https URL to fetch with GET (no auth).',
+      },
+    },
+    required: ['url'],
+    additionalProperties: false,
+  }),
+  execute: async ({ url }) => runFetchUrlTool({ url }),
+})
+
 const chatTools = {
   calculate: calculateTool,
   readFile: readFileTool,
+  fetchUrl: fetchUrlTool,
 }
 
 function evalOnTopic(prompt, text) {
@@ -463,6 +511,42 @@ async function main() {
 
   for (const test of READFILE_TOOL_PROMPTS) {
     console.log(`\n=== readFile tool: ${test.id} ===\n${test.prompt}\n`)
+
+    for (const p of providers) {
+      let text = ''
+      let error = null
+
+      try {
+        text = await runOneWithTools(p.model, test.prompt)
+      } catch (e) {
+        error = e instanceof Error ? e.message : String(e)
+      }
+
+      if (error) {
+        console.log(`-- ${p.name}: ERROR --\n${error}\n`)
+        continue
+      }
+
+      const checks = {
+        includesExpected: test.expectedText
+          ? evalIncludes(text, test.expectedText)
+          : evalIncludesAny(text, test.expectedAny),
+        concise: evalConcise(test.prompt, text),
+      }
+
+      if (Object.values(checks).some((ok) => !ok)) {
+        hadFailure = true
+      }
+
+      console.log(`-- ${p.name} --`)
+      console.log(text.trim())
+      console.log('checks:', checks)
+      console.log('')
+    }
+  }
+
+  for (const test of FETCHURL_TOOL_PROMPTS) {
+    console.log(`\n=== fetchUrl tool: ${test.id} ===\n${test.prompt}\n`)
 
     for (const p of providers) {
       let text = ''
