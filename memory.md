@@ -437,6 +437,7 @@ Context: insights captured after a `/build-pro` run plus checks and eval work on
 ### Tool design: bounded execution over open access
 
 - External tools should be tightly constrained: protocol checks, localhost blocking, size limits, timeouts, output caps. Treat tools as controlled capabilities, not open-ended access to external systems.
+- For server-side URL fetching, validate the actual network target, not only the original URL string. Redirects and DNS resolution can move a public-looking URL to private, loopback, link-local, or metadata addresses unless each hop / resolved target is checked.
 
 ### Tool contract: structured success/failure shape
 
@@ -456,6 +457,7 @@ Context: insights captured after a `/build-pro` run plus checks and eval work on
 ### Eval coverage: safety cases
 
 - Test not only successful tool use but also blocked and invalid inputs (e.g. localhost, malformed URLs) so security boundaries are verified, not just happy paths.
+- Captured build/eval logs are evidence, not regression coverage. If a review exposes a policy gap, add a targeted deterministic check for the exact boundary when feasible.
 
 ### Eval robustness: flexible matching
 
