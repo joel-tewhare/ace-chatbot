@@ -488,3 +488,28 @@ Context: insights captured after a `/build-pro` run plus checks and eval work on
 ### System: build-pro on bounded features
 
 - `/build-pro` works well for small, well-scoped features with clear patterns. Larger or riskier work may still benefit from pass-by-pass human review.
+
+### workflow idea: chain review + validation into one shortcut
+
+Consider refactoring the existing `ai-review` and `ai-review-validation` shortcuts into a single `ai-review` shortcut that runs both stages in sequence.
+
+Goal:
+- reduce context switching
+- keep the review workflow smoother
+- reuse the existing shortcuts/logic rather than rewriting the process
+
+Important boundary:
+- this shortcut should only combine analysis steps
+- it should not implement fixes
+- human decision-making remains separate after validated findings are returned
+
+Intended flow:
+1. Run external AI review
+2. Run validation against the review findings
+3. Output only validated / filtered findings
+4. Stop and wait for human decision
+
+Principle:
+- bundle analysis
+- separate decisions
+- never auto-implement review findings
