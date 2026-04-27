@@ -423,3 +423,68 @@ Avoid overwriting user input if the user continues typing while a request is in-
 - Higher-risk tasks (APIs, auth, external integrations):
   - apply strict least-privilege thinking
   - prefer restricted environments where possible
+
+---
+
+## Build-pro, checks, and evals — post-implementation notes
+
+Context: insights captured after a `/build-pro` run plus checks and eval work on bounded tool features.
+
+### Tool system: shared implementation pattern
+
+- Keep tool logic in a single shared module (e.g. `lib/fetchurl.mjs`) and reuse it across API routes and evals. This keeps runtime behaviour and test coverage aligned and avoids divergence between environments.
+
+### Tool design: bounded execution over open access
+
+- External tools should be tightly constrained: protocol checks, localhost blocking, size limits, timeouts, output caps. Treat tools as controlled capabilities, not open-ended access to external systems.
+
+### Tool contract: structured success/failure shape
+
+- Return consistent, predictable objects from tools:
+  - success → `{ ok: true, text }`
+  - failure → `{ ok: false, code, message }`
+- The model can then explain failures without inventing content; reliability improves. (Cross-reference: **Tool execution contract** for earlier calculator-style string contracts; the `{ ok, … }` shape is the structured variant for richer tools.)
+
+### Tool invocation: correctness ≠ tool usage
+
+- A correct final answer does not prove a tool was used. Models may answer from prior knowledge for well-known inputs (e.g. example.com). Tool validation must explicitly test invocation, not only output correctness.
+
+### Eval design: explicit vs natural tool usage
+
+- Evals that say “use the tool” confirm wiring works. Separate evals should test natural behaviour (URL present without instruction) to catch when the model bypasses tools.
+
+### Eval coverage: safety cases
+
+- Test not only successful tool use but also blocked and invalid inputs (e.g. localhost, malformed URLs) so security boundaries are verified, not just happy paths.
+
+### Eval robustness: flexible matching
+
+- Use `expectedAny` with multiple substrings to allow for model phrasing variation. Avoid brittle exact matches unless the contract truly requires them.
+
+### Eval formatting: structure vs format
+
+- Valid JSON alone is not enough: models may wrap JSON in markdown fences and break naïve parsing. Split checks: **structure** (`validJson`) and **format** (`noCodeFence`) for more reliable automation.
+
+### Eval: known inputs can hide issues
+
+- Well-known URLs can yield correct answers without tool usage. Prefer dynamic or less-known sources when validating that tools are actually used.
+
+### Checks: minimal change indicates alignment
+
+- If automated check generation only tweaks a little, the workflow likely already had sound structure (execution, ordering, failure handling).
+
+### Checks design: label + execution pairing
+
+- Each check should have a descriptive label (`echo`), a real command (`npm run build`), and correct failure propagation. Labels alone do not validate anything.
+
+### Eval architecture: setup failure vs test failure
+
+- Distinguish setup failures (e.g. no providers configured) from test failures (failed checks or tool behaviour). Both should fail the process, but separating them clarifies what broke.
+
+### UI / tooling: generic pending state
+
+- Use a shared helper (e.g. `isToolPartPending`) to detect in-flight tool states across multiple tools so new tools scale without one-off conditionals.
+
+### System: build-pro on bounded features
+
+- `/build-pro` works well for small, well-scoped features with clear patterns. Larger or riskier work may still benefit from pass-by-pass human review.
