@@ -7,11 +7,17 @@ import {
   tool,
   jsonSchema,
   stepCountIs,
+  type TelemetrySettings,
 } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
+import { after } from 'next/server'
 import { runFetchUrlTool } from '@/lib/fetchurl.mjs'
+import {
+  flushLangfuseTelemetry,
+  isLangfuseOtelActive,
+} from '@/instrumentation'
 
 const SUPPORTED_MODELS = new Set([
   'gemini-2.5-flash',
@@ -19,6 +25,28 @@ const SUPPORTED_MODELS = new Set([
   'gpt-4.1',
   'claude-sonnet-4-20250514',
 ])
+
+const CHAT_STREAM_FUNCTION_ID = 'chat.post.streamText'
+
+function isChatTelemetryEnabled(): boolean {
+  const value = process.env.AI_TELEMETRY_ENABLED?.toLowerCase()
+  return value === '1' || value === 'true'
+}
+
+function chatStreamTelemetry(model: string): TelemetrySettings {
+  return {
+    isEnabled: isChatTelemetryEnabled(),
+    functionId: CHAT_STREAM_FUNCTION_ID,
+    recordInputs: false,
+    recordOutputs: false,
+    metadata: {
+      feature: 'chatbot',
+      route: 'POST /api/chat',
+      selectedModel: model,
+      toolCount: Object.keys(chatTools).length,
+    },
+  }
+}
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(body), {
@@ -348,9 +376,16 @@ export async function POST(req: Request) {
     model: providerModel,
     messages: modelMessages,
     tools: chatTools,
+    experimental_telemetry: chatStreamTelemetry(model),
     //5 = Tool call + at least one follow-up model step. Important to cap steps to limit runaway loops.
     stopWhen: stepCountIs(5),
   })
+
+  if (isLangfuseOtelActive()) {
+    after(async () => {
+      await flushLangfuseTelemetry()
+    })
+  }
 
   return result.toUIMessageStreamResponse()
 }
