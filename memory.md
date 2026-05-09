@@ -459,7 +459,7 @@ Context: insights captured after a `/build-pro` run plus checks and eval work on
 ### Eval coverage: safety cases
 
 - Test not only successful tool use but also blocked and invalid inputs (e.g. localhost, malformed URLs) so security boundaries are verified, not just happy paths.
-- Captured build/eval logs are evidence, not regression coverage. If a review exposes a policy gap, add a targeted deterministic check for the exact boundary when feasible.
+- Captured build/eval logs are snapshot evidence, not standing regression coverage; tie them to a revision (git SHA or dated note in the artefact) when they are meant to prove a specific fix or close an accept/reject chain. If a review exposes a policy gap, add a targeted deterministic check for the exact boundary when feasible.
 - When a pass skips project checks or evals, state that explicitly next to any code-grounded validation (e.g. in implementation summaries) so readers do not read “validated” as a full automated run.
 
 ### Eval robustness: flexible matching
