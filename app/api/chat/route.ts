@@ -8,12 +8,20 @@ import {
   jsonSchema,
   stepCountIs,
   type TelemetrySettings,
+  type UIMessage,
 } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
 import { after } from 'next/server'
 import { runFetchUrlTool } from '@/lib/fetchurl.mjs'
+import {
+  GuardError,
+  guardInput,
+  extractLatestUserText,
+  replaceUserMessageText,
+  type GuardTelemetry,
+} from '@/lib/guards'
 import {
   flushLangfuseTelemetry,
   isLangfuseOtelActive,
@@ -33,7 +41,10 @@ function isChatTelemetryEnabled(): boolean {
   return value === '1' || value === 'true'
 }
 
-function chatStreamTelemetry(model: string): TelemetrySettings {
+function chatStreamTelemetry(
+  model: string,
+  guard: GuardTelemetry,
+): TelemetrySettings {
   return {
     isEnabled: isChatTelemetryEnabled(),
     functionId: CHAT_STREAM_FUNCTION_ID,
@@ -44,6 +55,10 @@ function chatStreamTelemetry(model: string): TelemetrySettings {
       route: 'POST /api/chat',
       selectedModel: model,
       toolCount: Object.keys(chatTools).length,
+      guardStatus: guard.status,
+      moderationChecked: guard.moderationChecked,
+      redactionCount: guard.redactionCount,
+      redactionTypes: guard.redactionTypes,
     },
   }
 }
@@ -339,9 +354,38 @@ export async function POST(req: Request) {
     return jsonResponse({ error: 'Unsupported model', model }, { status: 400 })
   }
 
+  const messagesForModel = structuredClone(messagesWithoutSystem) as Array<
+    Omit<UIMessage, 'id'>
+  >
+
+  const latestUser = extractLatestUserText(messagesForModel)
+  if (!latestUser) {
+    return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 })
+  }
+
+  let guardTelemetry: GuardTelemetry
+
+  try {
+    const guardResult = await guardInput(latestUser.text)
+    guardTelemetry = guardResult.telemetry
+    replaceUserMessageText(
+      messagesForModel,
+      latestUser.index,
+      guardResult.text,
+    )
+  } catch (error) {
+    if (error instanceof GuardError) {
+      return jsonResponse(
+        { error: error.message, code: error.code },
+        { status: error.httpStatus },
+      )
+    }
+    throw error
+  }
+
   let modelMessages
   try {
-    modelMessages = await convertToModelMessages(messagesWithoutSystem)
+    modelMessages = await convertToModelMessages(messagesForModel)
   } catch {
     return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 })
   }
@@ -376,7 +420,7 @@ export async function POST(req: Request) {
     model: providerModel,
     messages: modelMessages,
     tools: chatTools,
-    experimental_telemetry: chatStreamTelemetry(model),
+    experimental_telemetry: chatStreamTelemetry(model, guardTelemetry),
     //5 = Tool call + at least one follow-up model step. Important to cap steps to limit runaway loops.
     stopWhen: stepCountIs(5),
   })

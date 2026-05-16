@@ -4,7 +4,7 @@
 
 - Added AI SDK `experimental_telemetry` to the primary `streamText` call in `POST /api/chat`.
 - Set the stable telemetry `functionId` to `chat.post.streamText`.
-- Added safe telemetry metadata: `feature`, `route`, `selectedModel`, and `toolCount`.
+- Added safe telemetry metadata: `feature`, `route`, `selectedModel`, `toolCount`, and (after guard passes) coarse input-guard fields: `guardStatus`, `moderationChecked`, `redactionCount`, `redactionTypes` (see `docs/features/chatbot-guards.md`).
 - Disabled prompt/input and response/output capture with `recordInputs: false` and `recordOutputs: false`.
 - Gated the telemetry call with `AI_TELEMETRY_ENABLED=true` or `AI_TELEMETRY_ENABLED=1`.
 
@@ -28,6 +28,10 @@ This Phase 1 wiring uses the AI SDK's OpenTelemetry spans. It expects an OpenTel
   - `ai.telemetry.metadata.route`: `POST /api/chat`
   - `ai.telemetry.metadata.selectedModel`: selected allowlisted model, such as `gemini-2.5-flash`
   - `ai.telemetry.metadata.toolCount`: `3`
+  - `ai.telemetry.metadata.guardStatus`: `allowed` or `redacted`
+  - `ai.telemetry.metadata.moderationChecked`: boolean
+  - `ai.telemetry.metadata.redactionCount`: integer
+  - `ai.telemetry.metadata.redactionTypes`: e.g. `email`, `phone` (types present for that request)
 - Standard AI SDK model and timing attributes should appear when the runtime has an active OpenTelemetry tracer/exporter, including model/provider metadata and stream timing such as first chunk and finish duration where supported.
 
 ## Verification steps
@@ -38,7 +42,7 @@ This Phase 1 wiring uses the AI SDK's OpenTelemetry spans. It expects an OpenTel
 4. Send an authenticated chat request through the UI or `POST /api/chat`.
 5. In the observability backend, search for `chat.post.streamText`.
 6. Confirm a trace contains `ai.streamText chat.post.streamText` and `ai.streamText.doStream chat.post.streamText`.
-7. Confirm metadata includes the selected model and route, and that prompt/output bodies are absent because input and output recording are disabled.
+7. Confirm metadata includes the selected model, route, and guard summary fields when the request reached `streamText`, and that prompt/output bodies are absent because input and output recording are disabled.
 8. Optionally send a prompt that uses `calculate`, `readFile`, or `fetchUrl` and confirm the main stream trace still records. Detailed tool span review is deferred.
 
 Checks and evals were intentionally not run for this observe-wire pass.
